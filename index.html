@@ -1,0 +1,2135 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#1B5FE0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Era Chấm Công" />
+<title>Era Chấm Công</title>
+
+<!--
+  ================================================================
+  APP CHẤM CÔNG - PWA 1 FILE (kiến trúc giống NoiBaiCar)
+  ================================================================
+  TRƯỚC KHI DÙNG:
+  1. Sửa API_URL và APP_TOKEN bên dưới (mục CONFIG) cho khớp với
+     Apps Script bạn đã deploy + token bạn đặt trong Script Properties.
+  2. Đẩy file này lên GitHub, bật GitHub Pages.
+  3. Mở link trên điện thoại -> "Thêm vào màn hình chính".
+  ================================================================
+-->
+
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22Era%20Cham%20Cong%22%2C%20%22short_name%22%3A%20%22EraChamCong%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22scope%22%3A%20%22.%22%2C%20%22theme_color%22%3A%20%22%231B5FE0%22%2C%20%22background_color%22%3A%20%22%23F3F5F9%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/png%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAFpUlEQVR4nO3dUY7USBBF0ewRuwCJpcHSWBpILGQ%2BLFlFu7vK9suMeJF5zzdi7PCtsKu6mXr7%2BuN3A%2B76L/sAUBsBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUHyJfsAXPz99f3Sn//288%2BgI6nlbcF/F3a1lfMWrGqVgMZF85lFYpo8oPhujuYuac6AHLo5mrKkqQLy7OZoppImCahKOo/myKh8QBXTeVQ9o8IBVU/nUd2MSgY0Ip2rl9DhGBwUC6jXZRtxqZyPbZxKAYlXKPLCFDpUUY2AlOuRezHqHvlJBQK6dw3cpj/HWRy5B3Rj7s5Dn%2Bx0mnNA8816N9OpmQa0wm/nzHGOjgFdmqznWM%2BrfrJ2AZ0fqOE0b6t71l4Bmczxs8NI%2BY8GH8ZVLr8TXXR8HW3ndWYO258xmYPFv8qgnt35EzT5WXJ%2BQNTzTq2GXG5hzy2Szu787Sxd8gY6M6PV6tmdOfH0yDIDop6X/BtKC4h6TjJvKCcg6rnEuaGEgKjnBtuG8t/GH1HPhzzHEh3Qy1eJ55hMvBxO/BIKDYh6dG4NxQVEPb1YNeT4DIRCggJi/fTls4QiAqKeEUwayr%2BFUc9tDqMbHlD6T/tWFjD85A3k8BoqLX2AYwN6/gpIP/k5PB/j6CWU/wyE0gYGxPoJk7iE2ECQjAqI9RMsawmxgSAZEhDrJ0XKEmIDQRIdEOtnqPjx9g%2BIn13YGnFpQjcQ6ydA8JB5BoKkc0Dcv8x1v0BxG4j7V5jIUXMLg6RnQNy/Suh7mYI2EPevYGED5xYGCQFB0i0gHoAK6XixIjYQD0ApYsbOLQwSAoKEgCAhIEgICJI%2BAT15W8hbsERPht/rnTwbCBICgoSAICGg9548HPDjmiMCgoSA/vFyx7CE3iGgy2joUY1vLHSzN8SnXGwgyd9f3xdfSAT0j3sbZctozZIIqKcFMyKg9/THmqUWEgF94NvPP12ejlfIiHdhnzo2dK%2BGud%2ByEdAFewFKSZNl9Pb1x%2B8uf9GCvxIk3p4CxhJwUdhA97GQGgF1sUWw5hMSAXWz5kIioP6WWkgENIq4kKqw%2BM7Uud34WLLXx5j6X/JSt4CqrNwsW0YmU%2Bp4GPwoI5pPRl3wDJRjmiekoA1UfUzjHBdSoQeg1jegmTZzsMgnpL7/FZ6BvJR7EcYFxF0sTOSoOwdU7gW0mu4XiFsYJKEBcRcLEDzk/gFxF7M14tJE38JYQkPFj5dnIEiGBJTyBeZ4PthBjxZsIEhGBcQSCpayfhobCKKBAbGEwmStn8YGgmhsQCyhAInrp6VvIBoSpQ9weED8ZCNRwPDzn4HSX0N1OYzO4jtTHQZRzsuhTfWdqTTUl0k9zeEWhtLiAmIJ9eKzflrwBqIhnVU9Lf4WRkMKt3qa5zMQDX3IcywJAZ15lXgOK9GZgaR8ZpuzgWjoEtt6WuItjIZOcq6n5T4D0dBL5vW09IdoGnrCv55W5X8wVfR/gXtboddM/tv481kUGqvi/Gk6vKLyA2o09KBWPa3jl610UW58HRU9d4sNtFt2FRWtp7ltoM2lONwGelX1k3UMqF1fMIaTfWmOczQNqN26SXmO%2BGimU/MNaDPTrNt0p9P8A2p3n5fd5j7HWRwVCKhp77lyr0HdIz%2BpRkAb/y%2B53RU6VFGlgFq/j39GXCHnYxunWECbEZ8iXr1sDsfgoGRAm5k%2BjK6YzqZwQJvqGdVNZ1M%2BoE3FjKqns5kkoE2VjOZIZzNVQDvPkmbqZjdnQDuHkqbsZjd5QLv4kubuZrdKQI/GxbRINI9WDOhDc/x2TjwCgsTrd6JRDgFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQfI/OdeHtM4q2zEAAAAASUVORK5CYII%3D%22%2C%20%22sizes%22%3A%20%22192x192%22%2C%20%22type%22%3A%20%22image/png%22%2C%20%22purpose%22%3A%20%22any%20maskable%22%7D%2C%20%7B%22src%22%3A%20%22data%3Aimage/png%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAIAAAB7GkOtAAAQ30lEQVR4nO3cW3IbRxKGUUihXcgRXpq8NC9NjvBC5gEaiiZxbdQ1/3OeJywOUZlfV8Pyl%2B8/fp4AyPN19g8AwBwCABBKAABCCQBAKAEACCUAAKEEACCUAACEEgCAUAIAEEoAAEIJAEAoAQAIJQAAoQQAIJQAAIQSAIBQAgAQSgAAQgkAQCgBAAglAAChBAAglAAAhBIAgFACABBKAABCCQBAKAEACCUAAKEEACCUAACEEgCAUAIAEEoAAEIJAEAoAQAIJQAAoQQAIJQAAIQSAIBQAgAQSgAAQgkAQCgBAAglAAChBAAglAAAhBIAgFACABBKAABCCQBAKAEACCUAAKEEACCUAACEEgCAUAIAEEoAAEIJAECob7N/AGjv37//bP7P/OOvf5r/M2GuL99//Jz9M8DTeqz4V8gDOxIAVrfarn%2BcKrA4AWAt%2B677R0gCSxEAJqu98W/TA%2BYSACZIXvrXiAHjCQCDWPqPEwPGEAD6svdfoQR0JQC0Z%2Bn3IAY0JwA0Y%2B%2BPoQS0IgC8yt6fRQl4kQBwkL2/DiXgGAHgOfb%2BypSApwgAj7L6dyEDPEgAuMPe35cScJsAcJXVX4MMcI0AcIHVX48M8JkA8Ju9n0AJeCMAnE5Wfx4Z4CQAWP3JZCCcAOSy%2BjmTgVgCkMjq5zMZCCQAWax%2BbpOBKAKQwurncTIQ4uvsH4ARbH%2Be4sCEcAMoLnaS2z7D%2BjVSkgCUVX5nrbOb/KrZlAAUVHIf7bWDfARsQQCqKbN6Kq0bHwprEoA6dt8yOcvFJ8UiBKCCfReKVeKzYyIB2N52G8TiuMZHyWACsLG99oVl8TifLGMIwK522RG2wyt8ynQlAPvZYinYCG350OlBADaz%2BCKwAnpzAGhIAHay7PAb%2B/EcBl4nAHsw7VzkYPAKAdjAmkNuwtfhhHCMAKxutdk21StzWniKAKzLMHOMk8ODBGBRS82wAd6RI8RdArCidUbX3O7OWeIGAViLcaUH54qLBGAhi0ypEa3KAeMDAVjFCsNpMhM4abwRgCVMn0kDmcaR4yQAK5g7iuYwmbMXTgBm8hTGdA5hMgGYxsMX63AaMwnAHBPnzbBxjWOZRgAmMGbDNPlVR/3SHM4oX2f/AHFmDdgff/1jwLhr4jmZ/m1EIAEYauL2n/LnsikNCCEA40w53B78OWbWydGAkQRgkFnbf/wfSiUaUJsAjDD%2BQHvwp5UpZ0kDxhCA7qZs/8F/IuVpQEkC0JftTxkaUI8AdDT4%2BHrtQ2/jz5gGdCUAvYzf/iP/OJJpQBkC0IXtT20aUIMAtDfysHrtwyyDz54G9CAAjQ3e/sP%2BLLhIA7YmAC3Z/gTSgH0JQDO2P7E0YFMC0IbtTzgN2NG32T8AT7D6Wdn5fNrOG3EDaGDMibf92cKYgyozTQjAq2x/%2BEADdiEAL7H94SIN2IIAHGf7ww0asD4BOMj2h7s0YHECsC7bnwIc45UJwBEDnjiMDWUMOMwuAccIwNNsf3iWBqxJAJ5j%2B8MxGrAgAViL7U9hjvdqBOAJvZ8vjAfl9T7kLgFPEYBH2f7QhAasQwAeYvtDQxqwCAGYz/YnkGO/AgG4r%2BvThDEgVtfD7xLwCAG4wzGCTRneuwTgFq/%2BoStfBswlANPY/nAyCFMJwFVe/cMYvgyYRQAus/1hJA2YQgBGs/3hIqMxngBc4HkBijHUFwnAR17%2BwCxeBA0mAOPY/nCXMRlJAP6j3zOCYw0P6jcsLgEfCABAKAH4zeM/LMIlYAwB%2BMX2h6VowAAC0JftD4cZn94E4HTyRABhjPyZAHTk%2BQVeZIi6EoBezwIOLjTRaZRcAk4CABArPQAe/2F9LgGdRAfA9oddaEAP0QEASJYbAI//sBeXgOZyA9CD7Q9dGbG2QgOQ3Hzgg9iFEBqAHjybwAAGraHEAMTWHrgmcy0kBqAHTyUwjHFrJS4APTrvOMJgPYYu8BIQFwAAzrIC4PEfynAJeF1WAAB4ExQAj/9QjEvAi4ICAMB7AnCcx3%2BYzhi%2BIiUAUdc64BU56yIlAM157oBFGMbDIgKQ03OgiZClERGA5jxxwFKM5DH1AxBScqCthNVRPwDNedaABRnMAwQAIFTxADS/xHnKgGU1H8/yb4GKBwCAayoHwOM/pHEJeErlAABwgwAAhCobAO9/IJO3QI8rGwAAbhOAh3j8h40Y2AfVDEDhKxswXtWVUjMAbXmagO0Y20cIAECoggGoelkDJiq5WAoGoC0XSdiU4b1LAABCVQtAyWsasIJ666VaANpyhYStGeHbBAAglAAAhCoVgLZv6FweoYC2g1zsa4BSAQDgcQIAEKpOALz/AS7yFuiaOgEA4CkCABBKAC7w/geKMdQXFQlApbdywOLKLJwiAQDgWQIAEEoAPvKuEEoy2p9VCECZ93HALmqsnQoBAOAAAQAIJQD/4S0hFGbAPxAAgFDbB6DGVzHAdgosn%2B0DAMAxAgAQSgB%2B8wURlGfM3xMAgFACABBq7wAU%2BBYe2NfuK2jvAABwmAD84qshCGHY3wgAQCgBAAglAAChBAAg1MYB2P1fwAIK2HoRbRyAhvxbARDFyJ8JAEAoAQAIJQAAoQQAIJQAAIQSAIBQAgAQSgAAQu0agK3/9h1Qyb7raNcANOTvBEIgg38SAIBYAkBZ%2B17MYQwBoKaG219IqEoAAEIJAAU1f2Z3CaAkAaCaTstaA6hHAABCfZv9A8A23i4B/hVyanADoJQxL2r%2B/ftPb4QowA0ADnIhYHduAPAqFwI25QYAbbgQsB03AGjMhYBduAFAFy4ErE8AoC8lYFleAcEgXg2xGgGglPWfss8ZUAJWIAAwhwwwne8AYCbfEDCRGwDVbLpJXQgYTwAoaNMGnHxDwFgCACuSAQYQAGra9xLwngsBXQkAZdVowJkS0IMAUFmlBpzJAA19%2Bf7j5%2Byf4Yi2M1BvTfBB1aXp6B5mh5z2vQFs%2ButmlqoHxoVgBfueLn8RjBRvU3ptY34Y440Wq79NxjECQJwHt%2BT5f7ZRBk7//2llgAcJANxy996wIBcCHrTrdwAw2B9//bPdPvUNAbe5AcATXAioRADgiH1LIAO8EQB4yXbfFbsQ8EYAoIF9LwQnJQjmS%2BDTaauhZXG%2BK95C2v/fa3b9T0GcNfwUtxtatrDjokmYBavjzA0AOnIhYGW%2BA4DufEPAmtwAYBwXApbiBgCjuRCwCDeAXzYaRcpwIZhi95%2B/ITcAmMyFgFn2vgE4fFRyvhA41RvZ/cPaOwBQ0i4Z2OKH5AavgGBRO74aYi9uAL8ZM9a05oVgwR/pEcb8PTcA2IMLAc25AcBm1rwQsKPtA2ASyDT3Xxkyd6cSv4TtAwDhXAg4TAD%2Bw9tVNjXyQrBvbwz4B74EhlJ8V8zj3ACgJq%2BGuKtCAJxyuKb5qyHjdlbj91AhAG25OFOSC4HR/sx3ABDkxW8IwhNSjxsAJHIh4FQmAI4yHOA/QH1Mmd9YkQC05V0haR7JwNZbz1Bf5DsA4Bd/hyCNGwDw0ecLwdaP/1zz5fuPn7N/hmbaPrY48XD2799/bj0ONsM1bgDAHZVWHu8JAECoUgFo%2B5ziezAowPufG0oFAIDHCQBAKAG4xVsg2JoRvq1aAIq9oQPWUW%2B9VAsAAA8SgDtcIWFThveuggGod00Dpiu5WAoGAIBHCMB9LpKwHWP7iJoBKHlZA2apulJqBqA5TxOwEQP7IAEACFU2AM2vbJ4pYAvNR7Xq%2B59T4QAAcJsAAISqHABvgSCN9z9PqRwAAG4oHgCXAMjh8f9ZxQMAwDUC8DSXAFiQwTygfgDKX%2BKAHhJWR/0A9OBZA5ZiJI%2BJCEBCyYGGQpZGRAB68MQBizCMh6UEIKTnwOty1kVKAHrw3AHTGcNXCABAqKAA9LjWefqAiXoMYM77n1NUAAB4LysALgFQhsf/12UFAIA3cQFwCYACPP43EReATjQAhjFurSQGILDzwG2ZayExAJ14KoEBDFpDoQHIrD1wUexCCA1AJ55NoCsj1lZuADo13wGFTjoNV%2Bzj/yk5AADhogPgEgC78PjfQ3QAThoAO7D9O0kPAEAsAXAJgKV5/O9HADrSAHiRIepKAE4nzwIQxsifCUBfnl/gMOPTmwD80u%2BJwCGGA/oNjsf/NwLwmwbAImz/MQQAIJQA/IdLAEzn8X8YARhHA%2BAuYzKSAHzU9RnB4YYbug6Ix//PBOACBwWKMdQXCcBoLgFwkdEYTwAu8yIIRvLyZwoBuEoDYAzbfxYBmEYD4GQQphKAW3o/Ozj6hOs9Ah7/bxOAOxwg2JThvUsA7vNlAPTg1f90AjCfBhDIsV%2BBADzElwHQkFf/ixCAR2kANGH7r0MAnqAB8CLbfykCsBYNoDDHezUC8JwBzxeGhJIGHGyP/88SgKdpADzL9l%2BTAByhAfA4239ZArAuDaAAx3hlAnDQmCcOw8PWxhxgj/%2BHCcBxGgA32P7rE4CXaABcZPtvQQBepQHwge2/CwFoQAPgje2/kW%2BzfwCecB4tR581eUbZjhtAGyOXsjFjQSOPpWegVgSgGQ0glu2/KQFoSQMIZPvvSwAa0wCi2P5b%2B/L9x8/ZP0NBg1ezwWA8h7wAN4AuBh9WVwEGs/1rEIBeNICqbP8yvALqa/xeNi304zwX4wbQ1/jj6ypAJ7Z/PQLQnQZQgO1fkldAg0xZykaI1zm6hbkBDDLlQLsK8CLbvzY3gKFmbWQTxbOc1QRuAEPNOtyuAjzF9g/hBjDBxHVswLjN4YziBjDBxIPuKsANtn8aN4Bp5u5i88Z7TmMmAZhp%2BvO4wcMhTCYA83n4YhZnL5wALMFTGIM5cpwEYB3TB/JkJjM4abwRgIWsMJknw1mXA8YHArCWRUb0ZEprca64SABWZFxpxVniBgFY1DpzezK6e3KEuEsA1rXUAJ/M8D6cHB4kAKszzDzOaeEpArCB1ab6zGyvwwnhGAHYw5oTfjLkszkYvEIAdmLaeeMw8DoB2MyyY39m%2BHtzAGhIAPaz%2BAo4swja8qHTgwDsaouNcLIUXuNTpisB2Ngu2%2BHMjnicT5YxBGB7ey2Lk31xnY%2BSwQSggu0WxxsbxGfHRAJQx76r5CxnofikWIQAVLP7cnlTacv4UFiTABRUZt28t9fq8RGwBQEoq%2BQOem%2BdfeRXzaYEoLjyu%2BmatjvLr5GSBCBC7P7iMKs/wdfZPwAjGGae4sCEcAPI4irAbVZ/FAFIJAN8ZvUHEoBcMsCZ1R9LANLJQDKrP5wAcDrJQB6rn5MA8J4MJLD6eSMAXKAE9dj7fCYAXCUDNVj9XCMA3CED%2B7L6uU0AeJQS7MLe50ECwHNkYGVWP08RAA5SgnXY%2BxwjALxKCWax93mRANCMEoxh79OKANCeEvRg79OcANCXGLzC0qcrAWAQJXicvc8YAsAEYvCZpc94AsBkyTGw9JlLAFhL7R7Y%2BCxFAFjdvkmw7lmcALCl1apg17MjAaCgHnmw4qlHAABCfZ39AwAwhwAAhBIAgFACABBKAABCCQBAKAEACCUAAKEEACCUAACEEgCAUAIAEEoAAEIJAEAoAQAIJQAAoQQAIJQAAIQSAIBQAgAQSgAAQgkAQCgBAAglAAChBAAglAAAhBIAgFACABBKAABCCQBAKAEACCUAAKEEACCUAACEEgCAUAIAEEoAAEIJAEAoAQAIJQAAoQQAIJQAAIQSAIBQAgAQSgAAQgkAQCgBAAglAAChBAAglAAAhBIAgFACABBKAABCCQBAKAEACCUAAKEEACCUAACEEgCAUAIAEOp/w1m%2BbvTdSpMAAAAASUVORK5CYII%3D%22%2C%20%22sizes%22%3A%20%22512x512%22%2C%20%22type%22%3A%20%22image/png%22%2C%20%22purpose%22%3A%20%22any%20maskable%22%7D%5D%7D" />
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAFpUlEQVR4nO3dUY7USBBF0ewRuwCJpcHSWBpILGQ+LFlFu7vK9suMeJF5zzdi7PCtsKu6mXr7+uN3A+76L/sAUBsBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUHyJfsAXPz99f3Sn//288+gI6nlbcF/F3a1lfMWrGqVgMZF85lFYpo8oPhujuYuac6AHLo5mrKkqQLy7OZoppImCahKOo/myKh8QBXTeVQ9o8IBVU/nUd2MSgY0Ip2rl9DhGBwUC6jXZRtxqZyPbZxKAYlXKPLCFDpUUY2AlOuRezHqHvlJBQK6dw3cpj/HWRy5B3Rj7s5Dn+x0mnNA8816N9OpmQa0wm/nzHGOjgFdmqznWM+rfrJ2AZ0fqOE0b6t71l4Bmczxs8NI+Y8GH8ZVLr8TXXR8HW3ndWYO258xmYPFv8qgnt35EzT5WXJ+QNTzTq2GXG5hzy2Szu787Sxd8gY6M6PV6tmdOfH0yDIDop6X/BtKC4h6TjJvKCcg6rnEuaGEgKjnBtuG8t/GH1HPhzzHEh3Qy1eJ55hMvBxO/BIKDYh6dG4NxQVEPb1YNeT4DIRCggJi/fTls4QiAqKeEUwayr+FUc9tDqMbHlD6T/tWFjD85A3k8BoqLX2AYwN6/gpIP/k5PB/j6CWU/wyE0gYGxPoJk7iE2ECQjAqI9RMsawmxgSAZEhDrJ0XKEmIDQRIdEOtnqPjx9g+In13YGnFpQjcQ6ydA8JB5BoKkc0Dcv8x1v0BxG4j7V5jIUXMLg6RnQNy/Suh7mYI2EPevYGED5xYGCQFB0i0gHoAK6XixIjYQD0ApYsbOLQwSAoKEgCAhIEgICJI+AT15W8hbsERPht/rnTwbCBICgoSAICGg9548HPDjmiMCgoSA/vFyx7CE3iGgy2joUY1vLHSzN8SnXGwgyd9f3xdfSAT0j3sbZctozZIIqKcFMyKg9/THmqUWEgF94NvPP12ejlfIiHdhnzo2dK+Gud+yEdAFewFKSZNl9Pb1x+8uf9GCvxIk3p4CxhJwUdhA97GQGgF1sUWw5hMSAXWz5kIioP6WWkgENIq4kKqw+M7Uud34WLLXx5j6X/JSt4CqrNwsW0YmU+p4GPwoI5pPRl3wDJRjmiekoA1UfUzjHBdSoQeg1jegmTZzsMgnpL7/FZ6BvJR7EcYFxF0sTOSoOwdU7gW0mu4XiFsYJKEBcRcLEDzk/gFxF7M14tJE38JYQkPFj5dnIEiGBJTyBeZ4PthBjxZsIEhGBcQSCpayfhobCKKBAbGEwmStn8YGgmhsQCyhAInrp6VvIBoSpQ9weED8ZCNRwPDzn4HSX0N1OYzO4jtTHQZRzsuhTfWdqTTUl0k9zeEWhtLiAmIJ9eKzflrwBqIhnVU9Lf4WRkMKt3qa5zMQDX3IcywJAZ15lXgOK9GZgaR8ZpuzgWjoEtt6WuItjIZOcq6n5T4D0dBL5vW09IdoGnrCv55W5X8wVfR/gXtboddM/tv481kUGqvi/Gk6vKLyA2o09KBWPa3jl610UW58HRU9d4sNtFt2FRWtp7ltoM2lONwGelX1k3UMqF1fMIaTfWmOczQNqN26SXmO+GimU/MNaDPTrNt0p9P8A2p3n5fd5j7HWRwVCKhp77lyr0HdIz+pRkAb/y+53RU6VFGlgFq/j39GXCHnYxunWECbEZ8iXr1sDsfgoGRAm5k+jK6YzqZwQJvqGdVNZ1M+oE3FjKqns5kkoE2VjOZIZzNVQDvPkmbqZjdnQDuHkqbsZjd5QLv4kubuZrdKQI/GxbRINI9WDOhDc/x2TjwCgsTrd6JRDgFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQfI/OdeHtM4q2zEAAAAASUVORK5CYII=" />
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAFpUlEQVR4nO3dUY7USBBF0ewRuwCJpcHSWBpILGQ+LFlFu7vK9suMeJF5zzdi7PCtsKu6mXr7+uN3A+76L/sAUBsBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUHyJfsAXPz99f3Sn//288+gI6nlbcF/F3a1lfMWrGqVgMZF85lFYpo8oPhujuYuac6AHLo5mrKkqQLy7OZoppImCahKOo/myKh8QBXTeVQ9o8IBVU/nUd2MSgY0Ip2rl9DhGBwUC6jXZRtxqZyPbZxKAYlXKPLCFDpUUY2AlOuRezHqHvlJBQK6dw3cpj/HWRy5B3Rj7s5Dn+x0mnNA8816N9OpmQa0wm/nzHGOjgFdmqznWM+rfrJ2AZ0fqOE0b6t71l4Bmczxs8NI+Y8GH8ZVLr8TXXR8HW3ndWYO258xmYPFv8qgnt35EzT5WXJ+QNTzTq2GXG5hzy2Szu787Sxd8gY6M6PV6tmdOfH0yDIDop6X/BtKC4h6TjJvKCcg6rnEuaGEgKjnBtuG8t/GH1HPhzzHEh3Qy1eJ55hMvBxO/BIKDYh6dG4NxQVEPb1YNeT4DIRCggJi/fTls4QiAqKeEUwayr+FUc9tDqMbHlD6T/tWFjD85A3k8BoqLX2AYwN6/gpIP/k5PB/j6CWU/wyE0gYGxPoJk7iE2ECQjAqI9RMsawmxgSAZEhDrJ0XKEmIDQRIdEOtnqPjx9g+In13YGnFpQjcQ6ydA8JB5BoKkc0Dcv8x1v0BxG4j7V5jIUXMLg6RnQNy/Suh7mYI2EPevYGED5xYGCQFB0i0gHoAK6XixIjYQD0ApYsbOLQwSAoKEgCAhIEgICJI+AT15W8hbsERPht/rnTwbCBICgoSAICGg9548HPDjmiMCgoSA/vFyx7CE3iGgy2joUY1vLHSzN8SnXGwgyd9f3xdfSAT0j3sbZctozZIIqKcFMyKg9/THmqUWEgF94NvPP12ejlfIiHdhnzo2dK+Gud+yEdAFewFKSZNl9Pb1x+8uf9GCvxIk3p4CxhJwUdhA97GQGgF1sUWw5hMSAXWz5kIioP6WWkgENIq4kKqw+M7Uud34WLLXx5j6X/JSt4CqrNwsW0YmU+p4GPwoI5pPRl3wDJRjmiekoA1UfUzjHBdSoQeg1jegmTZzsMgnpL7/FZ6BvJR7EcYFxF0sTOSoOwdU7gW0mu4XiFsYJKEBcRcLEDzk/gFxF7M14tJE38JYQkPFj5dnIEiGBJTyBeZ4PthBjxZsIEhGBcQSCpayfhobCKKBAbGEwmStn8YGgmhsQCyhAInrp6VvIBoSpQ9weED8ZCNRwPDzn4HSX0N1OYzO4jtTHQZRzsuhTfWdqTTUl0k9zeEWhtLiAmIJ9eKzflrwBqIhnVU9Lf4WRkMKt3qa5zMQDX3IcywJAZ15lXgOK9GZgaR8ZpuzgWjoEtt6WuItjIZOcq6n5T4D0dBL5vW09IdoGnrCv55W5X8wVfR/gXtboddM/tv481kUGqvi/Gk6vKLyA2o09KBWPa3jl610UW58HRU9d4sNtFt2FRWtp7ltoM2lONwGelX1k3UMqF1fMIaTfWmOczQNqN26SXmO+GimU/MNaDPTrNt0p9P8A2p3n5fd5j7HWRwVCKhp77lyr0HdIz+pRkAb/y+53RU6VFGlgFq/j39GXCHnYxunWECbEZ8iXr1sDsfgoGRAm5k+jK6YzqZwQJvqGdVNZ1M+oE3FjKqns5kkoE2VjOZIZzNVQDvPkmbqZjdnQDuHkqbsZjd5QLv4kubuZrdKQI/GxbRINI9WDOhDc/x2TjwCgsTrd6JRDgFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQfI/OdeHtM4q2zEAAAAASUVORK5CYII=" />
+
+<style>
+  :root{
+    --primary:#1B5FE0; --primaryDark:#123F9E; --teal:#0FB8A6;
+    --bg:#F3F5F9; --card:#FFFFFF; --ink:#16213E; --sub:#6B7690;
+    --line:#E7EAF1; --amber:#F2A03D; --red:#E5484D; --green:#1FAE72;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; background:#0b0e14; height:100%; overscroll-behavior:none; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    touch-action:manipulation;
+  }
+  input,textarea{
+    -webkit-user-select:text; user-select:text;
+    -webkit-touch-callout:default;
+  }
+  input,select,textarea,button{ font-family:inherit; font-size:14px; }
+
+  .app{
+    position:fixed; top:0; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:430px;
+    display:flex; flex-direction:column; background:var(--bg); overflow:hidden;
+  }
+  .header{
+    background:linear-gradient(135deg,var(--primary),var(--primaryDark));
+    color:#fff; padding: calc(14px + env(safe-area-inset-top)) 18px 16px;
+    flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  }
+  .header .title{ font-size:17px; font-weight:700; }
+  .content{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+  .pad{ padding: 14px 16px 20px; }
+
+  .nav{
+    display:flex; border-top:1px solid var(--line); background:var(--card);
+    padding: 8px 4px calc(env(safe-area-inset-bottom,8px) + 8px); flex-shrink:0;
+    position:relative;
+  }
+  .nav button{
+    flex:1; background:none; border:none; padding:6px 0; color:var(--sub);
+    font-size:10.5px; font-weight:500; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+  }
+  .nav button svg{ width:21px; height:21px; }
+  .nav button.active{ color:var(--primary); font-weight:700; }
+  .qa-item{ display:flex; align-items:center; gap:12px; padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .settings-section-label{
+    font-size:11.5px; font-weight:700; color:var(--sub); text-transform:uppercase;
+    letter-spacing:0.4px; margin:18px 4px 8px;
+  }
+  .settings-section-label:first-of-type{ margin-top:14px; }
+  .qa-item:last-child{ border-bottom:none; }
+  .qa-icon{ width:38px; height:38px; border-radius:10px; background:#EEF1F7; color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .qa-icon svg{ width:19px; height:19px; }
+
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  .card{ background:var(--card); border-radius:16px; padding:16px; box-shadow:0 6px 18px rgba(20,40,90,0.06); margin-bottom:12px; }
+  .btn{ border:none; border-radius:12px; padding:12px 0; font-weight:700; font-size:14px; cursor:pointer; width:100%; }
+  .btn-primary{ background:var(--primary); color:#fff; }
+  .btn-outline{ background:#EEF1F7; color:var(--ink); }
+  .btn-green{ background:#E7F8F0; color:var(--green); }
+  .btn-red{ background:#FBEAEA; color:var(--red); }
+  .input{ width:100%; border:1.5px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px; font-size:16px; }
+  .input.pinfield{ -webkit-text-security:disc; text-security:disc; letter-spacing:2px; }
+
+  /* Bàn phím PIN tự vẽ - không mở bàn phím hệ thống, tránh mọi thanh gợi ý autofill */
+  .pin-display{ display:flex; gap:10px; justify-content:center; margin:6px 0 16px; }
+  .pin-dot{ width:14px; height:14px; border-radius:50%; border:2px solid var(--line); box-sizing:border-box; transition:background .1s,border-color .1s; }
+  .pin-dot.filled{ background:var(--primary); border-color:var(--primary); }
+  .pin-keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .pin-key{ background:#EEF1F7; border:none; border-radius:12px; padding:14px 0; font-size:19px; font-weight:700; color:var(--ink); cursor:pointer; }
+  .pin-key:active{ background:#DCE3F0; }
+  .pin-key.pin-key-empty{ background:transparent; pointer-events:none; }
+  .pin-key.pin-key-del{ font-size:16px; }
+  .num-display{ font-size:22px; font-weight:800; color:var(--ink); text-align:center; min-height:30px; margin:6px 0 10px; }
+
+  /* Dropdown tự vẽ - thay thế <select> để không mở popup hệ điều hành */
+  .custom-select{ position:relative; margin-bottom:10px; }
+  .custom-select-btn{ width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:var(--card); }
+  .custom-select-list{ display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--card); border:1.5px solid var(--line); border-radius:10px; max-height:220px; overflow-y:auto; z-index:60; box-shadow:0 10px 24px rgba(20,40,90,0.18); }
+  .custom-select-list.show{ display:block; }
+  .custom-select-item{ padding:11px 14px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--line); }
+  .custom-select-item:last-child{ border-bottom:none; }
+  .custom-select-item:active{ background:#EEF1F7; }
+  .custom-date-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .custom-date-row .custom-select{ flex:1; margin-bottom:0; }
+  .row{ display:flex; gap:8px; }
+  .pill{ display:inline-block; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:999px; }
+  .sub{ color:var(--sub); font-size:12.5px; }
+  .list-item{ display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .list-item:last-child{ border-bottom:none; }
+  .avatar{ width:38px; height:38px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; }
+  .tabs{ display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; }
+  .tabs button{ flex-shrink:0; padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:600; border:none; background:var(--card); color:var(--sub); }
+  .tabs button.active{ background:var(--primary); color:#fff; }
+
+  .overlay{ position:fixed; inset:0; background:rgba(20,30,60,0.45); display:none; align-items:flex-end; z-index:100; }
+  .overlay.show{ display:flex; }
+  .sheet{ background:var(--card); width:100%; max-width:430px; margin:0 auto; border-radius:20px 20px 0 0; padding: 18px 18px calc(env(safe-area-inset-bottom,18px) + 18px); max-height:85vh; overflow-y:auto; }
+  .sheet-title{ font-weight:700; font-size:15px; margin-bottom:14px; }
+
+  .empty{ text-align:center; color:var(--sub); font-size:13px; padding:24px 0; }
+  .toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:#16213E; color:#fff; padding:10px 16px; border-radius:10px; font-size:13px; z-index:200; opacity:0; transition:opacity .25s; pointer-events:none; max-width:80%; text-align:center; }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body autocomplete="off" data-form-type="other">
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// =====================================================================
+// KHOÁ HÀNH VI TRÌNH DUYỆT - để app cảm giác độc lập, không lộ là web
+// =====================================================================
+// Chặn menu chuột phải / nhấn giữ (trừ trong ô nhập liệu, vẫn cần copy/paste)
+document.addEventListener("contextmenu", (e) => {
+  const tag = e.target.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA") e.preventDefault();
+});
+// Chặn bôi đen văn bản ngoài ô nhập liệu (tránh hiện popup "Tìm trên Google/Chia sẻ")
+document.addEventListener("selectstart", (e) => {
+  const tag = e.target.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA") e.preventDefault();
+});
+// Chặn phóng to bằng cử chỉ 2 ngón (Safari iOS)
+document.addEventListener("gesturestart", (e) => e.preventDefault());
+document.addEventListener("gesturechange", (e) => e.preventDefault());
+// Chặn double-tap zoom dự phòng (ngoài touch-action:manipulation trong CSS)
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+
+// =====================================================================
+// RĂN ĐE SAO CHÉP (KHÔNG PHẢI BẢO MẬT THẬT)
+// Lưu ý: đây chỉ là biện pháp ngăn người dùng thông thường tò mò, KHÔNG
+// ngăn được người rành kỹ thuật (họ vẫn xem được mã nguồn bằng nhiều
+// cách khác). Bảo mật DỮ LIỆU thật sự nằm ở lớp session token phía dưới.
+// =====================================================================
+console.log("%c⚠ Dừng lại!", "color:#E5484D;font-size:26px;font-weight:800;");
+console.log("%cĐây là công cụ dành cho lập trình viên. Không dán bất kỳ đoạn mã nào vào đây theo hướng dẫn của người lạ - có thể bị chiếm quyền tài khoản/dữ liệu công ty.", "font-size:14px;");
+document.addEventListener("keydown", (e) => {
+  const k = e.key ? e.key.toLowerCase() : "";
+  const blockCombo =
+    k === "f12" ||
+    (e.ctrlKey && k === "u") ||
+    (e.ctrlKey && e.shiftKey && (k === "i" || k === "j" || k === "c"));
+  if (blockCombo) e.preventDefault();
+});
+
+// =====================================================================
+// CONFIG — SỬA 2 DÒNG NÀY THEO APPS SCRIPT CỦA BẠN
+// =====================================================================
+const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
+const APP_TOKEN = "CONTEP2K20";
+const APP_VERSION = "20260808-24";
+
+const STORAGE_KEY = "cc_state_v1";
+const SESSION_KEY = "cc_session_v1";
+
+// =====================================================================
+// STATE
+// =====================================================================
+let state = loadLocal() || {
+  employees: [], records: [], leaveRequests: [], correctionRequests: [], auditLog: [], announcements: [],
+  shifts: [{ id: "CA1", tenCa: "Ca hành chính", gioBatDau: "08:00", gioKetThuc: "17:30", updatedAt: 0, deleted: false }],
+  config: { gioChuan: "08:00", gioRaChuan: "17:30", soPhutChoPhepTre: 10, batBuocGPS: false, banKinhGPS: 300, viTriCongTy: { lat: null, lng: null }, updatedAt: 0 },
+};
+// Đảm bảo dữ liệu cũ (state đã lưu từ trước, chưa có trường mới) không bị lỗi
+if (!state.correctionRequests) state.correctionRequests = [];
+if (!state.auditLog) state.auditLog = [];
+if (!state.announcements) state.announcements = [];
+let session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); // {employeeId}
+let currentTab = "checkin";
+let syncTimer = null;
+let syncing = false;
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
+}
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function genId(prefix) {
+  return prefix + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+}
+
+// =====================================================================
+// TRUNG TÂM THÔNG BÁO - tính toán ngay trong app từ dữ liệu hiện có
+// (đơn/đề nghị vừa xử lý, dữ liệu công vừa bị sửa, yêu cầu đang chờ...).
+// Đây là thông báo TRONG APP khi đang mở, KHÔNG phải push đẩy khi tắt app.
+// Trạng thái "đã đọc" lưu riêng theo từng người trên chính máy đó.
+// =====================================================================
+function getNotifReadSet(u) {
+  try { return new Set(JSON.parse(localStorage.getItem("cc_notif_read_" + u.id) || "[]")); }
+  catch (e) { return new Set(); }
+}
+function saveNotifReadSet(u, set) {
+  localStorage.setItem("cc_notif_read_" + u.id, JSON.stringify([...set]));
+}
+
+function computeNotifications(u) {
+  const list = [];
+  const mgr = isAdmin(u) || hasPerm(u, "duyetNghiPhep") || hasPerm(u, "duyetDeNghiCong");
+
+  // Của tôi: đơn nghỉ phép đã được xử lý
+  state.leaveRequests.filter((l) => !l.deleted && l.employeeId === u.id && l.trangThai !== "ChoDuyet" && l.nguoiDuyet).forEach((l) => {
+    list.push({ id: "leave-" + l.id, time: l.updatedAt,
+      text: `Đơn nghỉ phép (${l.loaiNghi}, ${l.tuNgay} → ${l.denNgay}) đã được ${l.trangThai === "DaDuyet" ? "DUYỆT" : "TỪ CHỐI"}.` });
+  });
+
+  // Của tôi: đề nghị sửa công đã được xử lý
+  state.correctionRequests.filter((c) => !c.deleted && c.employeeId === u.id && c.trangThai !== "ChoDuyet" && c.nguoiDuyet).forEach((c) => {
+    list.push({ id: "cor-" + c.id, time: c.updatedAt,
+      text: `Đề nghị sửa công ngày ${c.ngayCanSua} đã được ${c.trangThai === "DaDuyet" ? "DUYỆT" : "TỪ CHỐI"}.` });
+  });
+
+  // Của tôi: dữ liệu chấm công vừa bị người khác cập nhật
+  state.auditLog.filter((a) => !a.deleted && a.employeeId === u.id && a.nguoiThucHien !== u.id).forEach((a) => {
+    const nguoi = state.employees.find((e) => e.id === a.nguoiThucHien);
+    list.push({ id: "audit-" + a.id, time: a.updatedAt,
+      text: `Dữ liệu chấm công ngày ${a.ngay} của bạn vừa được ${nguoi ? nguoi.hoTen : "quản lý"} cập nhật.` });
+  });
+
+  // Quản lý/Admin: có yêu cầu đang chờ duyệt
+  if (mgr) {
+    state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet" && l.employeeId !== u.id).forEach((l) => {
+      const emp = state.employees.find((e) => e.id === l.employeeId);
+      list.push({ id: "leavepending-" + l.id, time: l.updatedAt, text: `${emp ? emp.hoTen : l.employeeId} gửi đơn nghỉ phép, đang chờ bạn duyệt.` });
+    });
+    state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet" && c.employeeId !== u.id).forEach((c) => {
+      const emp = state.employees.find((e) => e.id === c.employeeId);
+      list.push({ id: "corpending-" + c.id, time: c.updatedAt, text: `${emp ? emp.hoTen : c.employeeId} gửi đề nghị sửa công ngày ${c.ngayCanSua}, đang chờ bạn duyệt.` });
+    });
+  }
+
+  // Thông báo nội bộ do Admin/người được cấp quyền gửi (toàn bộ hoặc riêng mình)
+  state.announcements.filter((a) => !a.deleted && a.nguoiGui !== u.id && (a.doiTuong === "ALL" || a.doiTuong === u.id)).forEach((a) => {
+    list.push({ id: "tb-" + a.id, time: a.updatedAt, announcement: true,
+      text: `📢 ${a.tieuDe ? a.tieuDe + " — " : ""}${a.noiDung} (từ ${a.hoTenNguoiGui || "quản lý"})` });
+  });
+
+  return list.sort((a, b) => b.time - a.time);
+}
+
+function unreadNotifCount(u) {
+  const readSet = getNotifReadSet(u);
+  return computeNotifications(u).filter((n) => !readSet.has(n.id)).length;
+}
+
+// =====================================================================
+// ÂM THANH THÔNG BÁO - tự tạo tiếng "ting" bằng Web Audio API, không cần
+// file âm thanh ngoài. Chỉ phát khi phát hiện thông báo THẬT SỰ MỚI kể
+// từ lần kiểm tra trước (tránh kêu lại thông báo cũ mỗi lần đồng bộ).
+// =====================================================================
+let alertedNotifIds = null; // null = chưa khởi tạo cho phiên đăng nhập này
+
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Kêu 3 tiếng "ting-ting-ting" liên tiếp, âm lượng cao hơn hẳn để dễ chú ý
+    const beepTimes = [0, 0.28, 0.56];
+    beepTimes.forEach((startAt) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(1046, ctx.currentTime + startAt);       // C6 - cao, dễ nghe
+      o.frequency.setValueAtTime(784, ctx.currentTime + startAt + 0.11); // G5
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
+      g.gain.exponentialRampToValueAtTime(0.9, ctx.currentTime + startAt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + 0.24);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + startAt);
+      o.stop(ctx.currentTime + startAt + 0.26);
+    });
+  } catch (e) {
+    // trình duyệt chặn âm thanh tự động (chưa có tương tác nào) - bỏ qua, không lỗi
+  }
+}
+
+function resetNotifAlertTracking() { alertedNotifIds = null; }
+
+function checkForNewNotifications(u) {
+  if (!u) return;
+  const notifs = computeNotifications(u);
+  const currentIds = new Set(notifs.map((n) => n.id));
+  if (alertedNotifIds === null) {
+    // Lần đầu sau khi đăng nhập/mở app - chỉ ghi nhận mốc, KHÔNG kêu
+    // (tránh kêu dồn dập cho các thông báo đã có từ trước).
+    alertedNotifIds = currentIds;
+    return;
+  }
+  const hasNew = notifs.some((n) => !alertedNotifIds.has(n.id));
+  if (hasNew) {
+    playNotifSound();
+    if (navigator.vibrate) navigator.vibrate([250, 100, 250, 100, 250]);
+  }
+  alertedNotifIds = currentIds;
+}
+
+function openNotificationsSheet(u) {
+  const notifs = computeNotifications(u);
+  const readSet = getNotifReadSet(u);
+  openSheet(`
+    <div class="sheet-title">Thông báo</div>
+    <div style="max-height:65vh;overflow-y:auto;">
+      ${notifs.length === 0 ? `<div class="empty">Không có thông báo nào.</div>` :
+        notifs.map((n) => `<div style="padding:10px 0 10px ${n.announcement ? "10px" : "0"};border-bottom:1px solid var(--line);${readSet.has(n.id) ? "" : "background:#F3F5F9;"}${n.announcement ? "border-left:3px solid var(--primary);" : ""}">
+          <div style="font-size:13.5px;padding:0 2px;${n.announcement ? "font-weight:600;" : ""}">${n.text}</div>
+          <div class="sub" style="margin-top:2px;padding:0 2px;">${new Date(n.time).toLocaleString("vi-VN", { timeZone: VN_TZ, dateStyle: "short", timeStyle: "short" })}</div>
+        </div>`).join("")}
+    </div>
+    <button class="btn btn-outline" id="notif_close" style="margin-top:14px;">Đóng</button>
+  `);
+  // Đánh dấu tất cả đã đọc ngay khi mở trung tâm thông báo
+  const newReadSet = new Set(readSet);
+  notifs.forEach((n) => newReadSet.add(n.id));
+  saveNotifReadSet(u, newReadSet);
+  document.getElementById("notif_close").onclick = () => { closeSheet(); renderApp(); };
+}
+
+function nowMs() { return Date.now(); }
+
+// Ghi lại 1 lần thay đổi giờ chấm công - dùng cho cả sửa trực tiếp lẫn duyệt đề nghị
+function logAuditChange(employeeId, dayKey, nguoiThucHien, oldVals, newVals, lyDo, loaiThayDoi) {
+  state.auditLog.push({
+    id: genId("LS"), employeeId, ngay: dayKey, nguoiThucHien,
+    gioVaoCu: oldVals.gioVao || "", gioRaCu: oldVals.gioRa || "",
+    gioVaoMoi: newVals.gioVao || "", gioRaMoi: newVals.gioRa || "",
+    lyDo: lyDo || "", loaiThayDoi, updatedAt: nowMs(), deleted: false,
+  });
+}
+
+// Múi giờ CỐ ĐỊNH Hà Nội - không phụ thuộc cài đặt múi giờ trên điện thoại,
+// đảm bảo mọi nhân viên (dù máy cài sai giờ) vẫn chấm công đúng giờ Việt Nam.
+const VN_TZ = "Asia/Ho_Chi_Minh";
+function nowVNParts() {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: VN_TZ, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  });
+  const map = {};
+  fmt.formatToParts(new Date()).forEach((p) => { map[p.type] = p.value; });
+  return map;
+}
+function nowVNTimeStr() { const p = nowVNParts(); return `${p.hour}:${p.minute}:${p.second}`; }
+function nowVNDateStr() { const p = nowVNParts(); return `${p.day}/${p.month}/${p.year}`; }
+function nowVNDayKey() { const p = nowVNParts(); return `${p.year}-${p.month}-${p.day}`; }
+function nowVNWeekdayLong() {
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: VN_TZ, weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
+}
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+// =====================================================================
+// BỘ NHẬP LIỆU NỘI BỘ - thay thế HOÀN TOÀN các UI hệ thống/trình duyệt
+// (bàn phím số, popup <select>, lịch chọn ngày, đồng hồ chọn giờ).
+// Mọi tương tác đều vẽ ngay trong app bằng HTML/CSS/JS thuần, không có
+// input nào thực sự focus -> không thể bị autofill/gợi ý can thiệp.
+// =====================================================================
+
+// ---- 1. Bàn phím số tự vẽ (dùng cho PIN và các ô số khác) ----
+const digitEntries = {};
+
+function renderDigitEntry(idPrefix, opts) {
+  opts = opts || {};
+  const maxLen = opts.maxLen || 6;
+  const mask = opts.mask !== false;
+  digitEntries[idPrefix] = { value: opts.initial != null ? String(opts.initial) : "", maxLen, mask };
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "DEL"];
+  return `
+    <div class="${mask ? "pin-display" : "num-display"}" id="${idPrefix}_display"></div>
+    <div class="pin-keypad">
+      ${keys.map((k) => k === ""
+        ? `<div class="pin-key pin-key-empty"></div>`
+        : `<button type="button" class="pin-key ${k === "DEL" ? "pin-key-del" : ""}" data-digitkey="${idPrefix}" data-key="${k}">${k === "DEL" ? "⌫" : k}</button>`
+      ).join("")}
+    </div>
+  `;
+}
+
+function bindDigitEntry(idPrefix) {
+  updateDigitDisplay(idPrefix);
+  document.querySelectorAll(`[data-digitkey="${idPrefix}"]`).forEach((btn) => {
+    btn.onclick = () => {
+      const entry = digitEntries[idPrefix];
+      if (!entry) return;
+      const key = btn.dataset.key;
+      if (key === "DEL") entry.value = entry.value.slice(0, -1);
+      else if (entry.value.length < entry.maxLen) entry.value += key;
+      updateDigitDisplay(idPrefix);
+    };
+  });
+}
+
+function updateDigitDisplay(idPrefix) {
+  const entry = digitEntries[idPrefix];
+  const el = document.getElementById(idPrefix + "_display");
+  if (!el || !entry) return;
+  if (entry.mask) {
+    let dots = "";
+    for (let i = 0; i < entry.maxLen; i++) dots += `<span class="pin-dot ${i < entry.value.length ? "filled" : ""}"></span>`;
+    el.innerHTML = dots;
+  } else {
+    el.textContent = entry.value || "0";
+  }
+}
+
+function getDigitValue(idPrefix) { return (digitEntries[idPrefix] && digitEntries[idPrefix].value) || ""; }
+
+// Alias PIN (giữ nguyên tên hàm cũ để không phải sửa các nơi đã dùng)
+function renderPinEntry(idPrefix, maxLen) { return renderDigitEntry(idPrefix, { maxLen: maxLen || 6, mask: true }); }
+function bindPinEntry(idPrefix) { bindDigitEntry(idPrefix); }
+function getPinValue(idPrefix) { return getDigitValue(idPrefix); }
+function resetPinValue(idPrefix) { digitEntries[idPrefix] = { value: "", maxLen: 6, mask: true }; }
+
+// Ô số thường (không che), dùng cho Số phút trễ, Bán kính GPS...
+function renderNumberEntry(idPrefix, initial, maxLen) { return renderDigitEntry(idPrefix, { initial, maxLen: maxLen || 5, mask: false }); }
+function bindNumberEntry(idPrefix) { bindDigitEntry(idPrefix); }
+function getNumberValue(idPrefix) { return Number(getDigitValue(idPrefix)) || 0; }
+
+// ---- 2. Dropdown tự vẽ (thay thế <select>) ----
+const selectValues = {};
+
+function renderCustomSelect(idPrefix, options, selected) {
+  selectValues[idPrefix] = selected != null ? selected : options[0].value;
+  const selectedLabel = (options.find((o) => o.value === selectValues[idPrefix]) || options[0]).label;
+  return `
+    <div class="custom-select" id="${idPrefix}_wrap">
+      <button type="button" class="input custom-select-btn" id="${idPrefix}_btn">
+        <span id="${idPrefix}_label">${selectedLabel}</span><span style="color:var(--sub);">▾</span>
+      </button>
+      <div class="custom-select-list" id="${idPrefix}_list">
+        ${options.map((o) => `<div class="custom-select-item" data-select="${idPrefix}" data-value="${o.value}">${o.label}</div>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function bindCustomSelect(idPrefix, onChange) {
+  const btn = document.getElementById(idPrefix + "_btn");
+  const list = document.getElementById(idPrefix + "_list");
+  if (!btn || !list) return;
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    document.querySelectorAll(".custom-select-list.show").forEach((l) => { if (l !== list) l.classList.remove("show"); });
+    list.classList.toggle("show");
+  };
+  document.querySelectorAll(`[data-select="${idPrefix}"]`).forEach((item) => {
+    item.onclick = (e) => {
+      e.stopPropagation();
+      const val = item.dataset.value;
+      selectValues[idPrefix] = val;
+      document.getElementById(idPrefix + "_label").textContent = item.textContent;
+      list.classList.remove("show");
+      if (onChange) onChange(val);
+    };
+  });
+}
+
+function getSelectValue(idPrefix) { return selectValues[idPrefix]; }
+
+document.addEventListener("click", () => {
+  document.querySelectorAll(".custom-select-list.show").forEach((l) => l.classList.remove("show"));
+});
+
+// ---- 3. Bộ chọn NGÀY tự vẽ (3 dropdown Ngày/Tháng/Năm - thay <input type="date">) ----
+function renderCustomDate(idPrefix, initialYMD) {
+  let y, m, d;
+  if (initialYMD) { const p = initialYMD.split("-"); y = Number(p[0]); m = Number(p[1]); d = Number(p[2]); }
+  if (!y) { const vn = nowVNParts(); y = Number(vn.year); m = Number(vn.month); d = Number(vn.day); }
+  const dayOpts = Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1).padStart(2, "0"), label: "Ngày " + (i + 1) }));
+  const monthOpts = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, "0"), label: "Tháng " + (i + 1) }));
+  const yearOpts = Array.from({ length: 4 }, (_, i) => { const yy = Number(nowVNParts().year) - 1 + i; return { value: String(yy), label: String(yy) }; });
+  return `
+    <div class="custom-date-row">
+      ${renderCustomSelect(idPrefix + "_d", dayOpts, String(d).padStart(2, "0"))}
+      ${renderCustomSelect(idPrefix + "_m", monthOpts, String(m).padStart(2, "0"))}
+      ${renderCustomSelect(idPrefix + "_y", yearOpts, String(y))}
+    </div>
+  `;
+}
+function bindCustomDate(idPrefix) {
+  bindCustomSelect(idPrefix + "_d");
+  bindCustomSelect(idPrefix + "_m");
+  bindCustomSelect(idPrefix + "_y");
+}
+function getCustomDateValue(idPrefix) {
+  return `${getSelectValue(idPrefix + "_y")}-${getSelectValue(idPrefix + "_m")}-${getSelectValue(idPrefix + "_d")}`;
+}
+
+// ---- 4. Bộ chọn GIỜ tự vẽ (2 dropdown Giờ/Phút - thay việc gõ tay "HH:mm") ----
+function renderCustomTime(idPrefix, initialHM) {
+  let h = 8, mnt = 0;
+  if (initialHM && initialHM.includes(":")) { const p = initialHM.split(":"); h = Number(p[0]) || 0; mnt = Number(p[1]) || 0; }
+  // Làm tròn theo TỔNG SỐ PHÚT trong ngày (không làm tròn riêng phút), để khi
+  // phút vượt quá 59 sẽ tự "mang" sang giờ đúng, không bị lệch giờ hiển thị.
+  const DAY_MIN = 24 * 60;
+  let totalMin = h * 60 + mnt;
+  totalMin = Math.round(totalMin / 5) * 5;
+  totalMin = ((totalMin % DAY_MIN) + DAY_MIN) % DAY_MIN; // đảm bảo luôn trong khoảng 1 ngày
+  const roundedHour = Math.floor(totalMin / 60);
+  const roundedMinute = totalMin % 60;
+
+  const hourOpts = Array.from({ length: 24 }, (_, i) => ({ value: String(i).padStart(2, "0"), label: String(i).padStart(2, "0") + " giờ" }));
+  const minuteOpts = Array.from({ length: 12 }, (_, i) => { const mm = i * 5; return { value: String(mm).padStart(2, "0"), label: String(mm).padStart(2, "0") + " phút" }; });
+  return `
+    <div class="custom-date-row">
+      ${renderCustomSelect(idPrefix + "_h", hourOpts, String(roundedHour).padStart(2, "0"))}
+      ${renderCustomSelect(idPrefix + "_m", minuteOpts, String(roundedMinute).padStart(2, "0"))}
+    </div>
+  `;
+}
+function bindCustomTime(idPrefix) {
+  bindCustomSelect(idPrefix + "_h");
+  bindCustomSelect(idPrefix + "_m");
+}
+function getCustomTimeValue(idPrefix) {
+  return `${getSelectValue(idPrefix + "_h")}:${getSelectValue(idPrefix + "_m")}`;
+}
+
+
+
+function activeEmployees() { return state.employees.filter((e) => !e.deleted); }
+function currentUser() {
+  if (!session) return null;
+  return activeEmployees().find((e) => e.id === session.employeeId) || null;
+}
+function isManager(u) { u = u || currentUser(); return u && (u.vaiTro === "QuanLy" || u.vaiTro === "Admin"); }
+function isAdmin(u) { u = u || currentUser(); return u && u.vaiTro === "Admin"; }
+// Quyền chi tiết do Admin cấp riêng cho từng người (ngoài Admin luôn có full quyền)
+const PERMISSIONS = {
+  suaChamCong: "Sửa giờ chấm công của nhân viên",
+  duyetNghiPhep: "Duyệt / từ chối đơn nghỉ phép",
+  duyetDeNghiCong: "Duyệt / từ chối đề nghị sửa công",
+  quanLyNhanVien: "Thêm / sửa thông tin nhân viên",
+  xemBaoCao: "Xem báo cáo tổng hợp",
+  guiThongBao: "Gửi tin nhắn thông báo đến nhân viên",
+};
+function hasPerm(u, key) {
+  u = u || currentUser();
+  if (!u) return false;
+  if (u.vaiTro === "Admin") return true;
+  return !!(u.quyen && u.quyen[key]);
+}
+function canSeeEmployeesTab(u) { return isAdmin(u) || hasPerm(u, "quanLyNhanVien"); }
+function canSeeReportTab(u) { return isAdmin(u) || hasPerm(u, "xemBaoCao") || hasPerm(u, "duyetNghiPhep") || hasPerm(u, "duyetDeNghiCong"); }
+
+// =====================================================================
+// SYNC — GỘP DỮ LIỆU THEO updatedAt, KHÔNG GHI ĐÈ (client-side merge)
+// =====================================================================
+function mergeCollection(localList, serverList) {
+  const map = {};
+  (localList || []).forEach((it) => (map[it.id] = it));
+  (serverList || []).forEach((it) => {
+    const existing = map[it.id];
+    if (!existing || (it.updatedAt || 0) > (existing.updatedAt || 0)) map[it.id] = it;
+  });
+  return Object.values(map);
+}
+function mergeServerIntoLocal(serverData) {
+  state.employees = mergeCollection(state.employees, serverData.employees);
+  state.records = mergeCollection(state.records, serverData.records);
+  state.leaveRequests = mergeCollection(state.leaveRequests, serverData.leaveRequests);
+  state.correctionRequests = mergeCollection(state.correctionRequests, serverData.correctionRequests);
+  state.auditLog = mergeCollection(state.auditLog, serverData.auditLog);
+  state.announcements = mergeCollection(state.announcements, serverData.announcements);
+  state.shifts = mergeCollection(state.shifts, serverData.shifts);
+  if (serverData.config && (serverData.config.updatedAt || 0) >= (state.config.updatedAt || 0)) {
+    state.config = serverData.config;
+  }
+  saveLocal();
+}
+
+function scheduleSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncPush, 4000);
+}
+
+async function apiCall(method, params) {
+  if (method === "GET") {
+    const url = new URL(API_URL);
+    url.searchParams.set("token", APP_TOKEN);
+    if (session && session.token) url.searchParams.set("session", session.token);
+    Object.entries(params || {}).forEach(([k, v]) => v != null && url.searchParams.set(k, v));
+    const res = await fetch(url.toString());
+    return res.json();
+  } else {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ token: APP_TOKEN, session: session ? session.token : null, ...params }),
+    });
+    return res.json();
+  }
+}
+
+// Khi server báo phiên hết hạn/không hợp lệ - buộc đăng nhập lại, không âm thầm thất bại
+function handleSessionExpired() {
+  session = null;
+  localStorage.removeItem(SESSION_KEY);
+  toast("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+  renderApp();
+}
+
+async function syncPush() {
+  if (syncing) return;
+  syncing = true;
+  try {
+    const res = await apiCall("POST", {
+      action: "sync",
+      data: {
+        employees: state.employees, records: state.records,
+        leaveRequests: state.leaveRequests, correctionRequests: state.correctionRequests,
+        auditLog: state.auditLog, announcements: state.announcements, shifts: state.shifts, config: state.config,
+      },
+    });
+    if (res.success) {
+      mergeServerIntoLocal(res.data);
+      renderApp();
+    } else if (res.sessionExpired) {
+      handleSessionExpired();
+    } else {
+      toast("Đồng bộ lỗi: " + res.error);
+    }
+  } catch (e) {
+    // offline hoặc mất mạng - dữ liệu vẫn an toàn trong localStorage, thử lại sau
+  } finally {
+    syncing = false;
+  }
+}
+
+async function syncPull(silent) {
+  if (!session) return; // chưa đăng nhập thì chưa có session, không gọi pull
+  try {
+    const res = await apiCall("GET", { action: "pull" });
+    if (res.success) {
+      mergeServerIntoLocal(res.data);
+      // Kiểm tra có thông báo THẬT SỰ MỚI không để phát âm thanh - làm được kể cả
+      // khi đồng bộ chạy ngầm (không vẽ lại giao diện), vì âm thanh không cần render.
+      const u = currentUser();
+      if (u) checkForNewNotifications(u);
+      // Đồng bộ NGẦM (chạy tự động mỗi 30s) chỉ cập nhật dữ liệu trong bộ nhớ,
+      // KHÔNG vẽ lại giao diện - tránh làm mất dữ liệu người dùng đang gõ dở
+      // (VD: đang chọn giờ trong Cài đặt, đang điền form thêm nhân viên...).
+      // Giao diện sẽ tự cập nhật ở lần chuyển tab/thao tác tiếp theo.
+      if (!silent) renderApp();
+    } else if (res.sessionExpired) {
+      handleSessionExpired();
+    } else if (!silent) {
+      toast("Không tải được dữ liệu: " + res.error);
+    }
+  } catch (e) {
+    if (!silent) toast("Không có kết nối mạng.");
+  }
+}
+
+// Xoá sạch dữ liệu tạm trên máy (KHÔNG đẩy lên trước) rồi tải lại nguyên bản
+// từ Sheet. Dùng khi nghi ngờ dữ liệu máy bị lệch/"sống lại" so với Sheet
+// (VD: Admin vừa xoá thẳng dòng trên Sheet thay vì dùng cột DaXoa).
+async function resetLocalCacheAndReload() {
+  const confirmed = window.confirm(
+    "Thao tác này sẽ XOÁ dữ liệu tạm trên máy này và tải lại đúng nguyên bản từ hệ thống dữ liệu trung tâm.\n\n" +
+    "Nếu bạn (hoặc ai khác trên máy này) vừa thao tác gì đó CHƯA kịp đồng bộ (đang mất mạng), thay đổi đó sẽ mất.\n\n" +
+    "Bạn có chắc chắn muốn tiếp tục?"
+  );
+  if (!confirmed) return;
+  state.employees = [];
+  state.records = [];
+  state.leaveRequests = [];
+  state.correctionRequests = [];
+  state.auditLog = [];
+  saveLocal();
+  toast("Đang tải lại từ hệ thống dữ liệu...");
+  await syncPull(false);
+  toast("Đã làm mới xong.");
+}
+
+// =====================================================================
+// GPS
+// =====================================================================
+function getLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      () => resolve(null),
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+    );
+  });
+}
+function distMeters(a, b) {
+  if (!a || !b || a.lat == null || b.lat == null) return null;
+  const R = 6371000, toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+// =====================================================================
+// NÉN ẢNH MINH CHỨNG - Google Sheets giới hạn ~50.000 ký tự/ô, nên nén
+// nhỏ + giảm chất lượng trước khi lưu dạng base64.
+// =====================================================================
+const MAX_IMAGE_BASE64_LEN = 40000;
+function compressImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 480;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        let quality = 0.5;
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrl.length > MAX_IMAGE_BASE64_LEN && quality > 0.15) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+        if (dataUrl.length > MAX_IMAGE_BASE64_LEN) { resolve(null); return; } // vẫn quá lớn, bỏ qua
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error("Không đọc được ảnh"));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Không đọc được tệp"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// =====================================================================
+// LOGIN / SETUP LẦN ĐẦU
+// =====================================================================
+async function doLogin(maNV, pin) {
+  const res = await apiCall("GET", { action: "login", maNV, pin });
+  if (!res.success) return { ok: false, error: res.error };
+  // gộp nhân viên vừa xác thực vào local (không có PIN, server đã ẩn đi)
+  state.employees = mergeCollection(state.employees, [res.data]);
+  saveLocal();
+  session = { employeeId: res.data.id, token: res.session };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  resetNotifAlertTracking(); // đăng nhập lại - không kêu dồn dập thông báo cũ
+  return { ok: true };
+}
+function doLogout() {
+  // Huỷ session thật ở phía server, không chỉ xoá trên máy
+  if (session && session.token) {
+    apiCall("GET", { action: "logout" }).catch(() => {});
+  }
+  session = null;
+  localStorage.removeItem(SESSION_KEY);
+  resetNotifAlertTracking();
+  currentTab = "checkin";
+  renderApp();
+}
+
+
+async function createFirstAdmin(hoTen, maNV, pin) {
+  const emp = {
+    id: maNV, hoTen, pin, phongBan: "Ban giám đốc", chucVu: "Quản trị hệ thống",
+    vaiTro: "Admin", trangThai: "DangLam", updatedAt: nowMs(), deleted: false,
+  };
+  state.employees = mergeCollection(state.employees, [emp]);
+  saveLocal();
+  await syncPush(); // lần đầu hệ thống trống nên server cho phép sync không cần session (bootstrap)
+  // sau khi nhân viên đã tồn tại trên server, đăng nhập thật để lấy session hợp lệ
+  const r = await doLogin(maNV, pin);
+  if (!r.ok) {
+    // trường hợp hiếm: đồng bộ delay - vẫn tạm coi như đăng nhập cục bộ để không kẹt màn hình
+    session = { employeeId: emp.id, token: null };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }
+}
+
+// =====================================================================
+// RENDER: KHUNG CHÍNH
+// =====================================================================
+function switchTab(tab) { currentTab = tab; renderApp(); }
+
+// Menu hành động nhanh khi bấm nút nổi (+) giữa thanh điều hướng - giống ảnh tham khảo
+// Lưu ý: KHÔNG có mục "Chấm công" ở đây vì đã có tab riêng luôn hiển thị sẵn ở
+// thanh điều hướng dưới cùng - để tránh 2 cửa ngõ trùng nhau cho cùng 1 hành động.
+function openQuickActions(u) {
+  const canAnnounce = isAdmin(u) || hasPerm(u, "guiThongBao");
+  openSheet(`
+    <div class="sheet-title">Thêm</div>
+    <div class="qa-item" id="qa_leave"><div class="qa-icon">${ICONS.leave}</div><div><div style="font-weight:600;">Tạo đơn nghỉ phép</div><div class="sub">Gửi đơn chờ duyệt</div></div></div>
+    <div class="qa-item" id="qa_correction"><div class="qa-icon">${ICONS.edit}</div><div><div style="font-weight:600;">Đề nghị cập nhật công</div><div class="sub">Sửa giờ vào/ra hôm nay</div></div></div>
+    ${canAnnounce ? `<div class="qa-item" id="qa_announce"><div class="qa-icon">${ICONS.announce}</div><div><div style="font-weight:600;">Gửi thông báo</div><div class="sub">Nhắn tới toàn bộ hoặc 1 nhân viên</div></div></div>` : ""}
+    <div class="qa-item" id="qa_settings"><div class="qa-icon">${ICONS.settings}</div><div><div style="font-weight:600;">Cài đặt</div><div class="sub">Tài khoản, quyền, đồng bộ...</div></div></div>
+  `);
+  document.getElementById("qa_leave").onclick = () => { closeSheet(); openLeaveForm(u); };
+  document.getElementById("qa_correction").onclick = () => {
+    closeSheet();
+    const today = myTodayRecord(u);
+    openCorrectionRequestForm(u, todayKey(), today);
+  };
+  const announceBtn = document.getElementById("qa_announce");
+  if (announceBtn) announceBtn.onclick = () => { closeSheet(); openAnnouncementForm(u); };
+  document.getElementById("qa_settings").onclick = () => { closeSheet(); currentTab = "settings"; renderApp(); };
+}
+
+
+let serverHasEmployees = null; // null = chưa kiểm tra, true/false = đã biết
+
+function renderApp() {
+  const app = document.getElementById("app");
+
+  if (activeEmployees().length === 0) {
+    if (serverHasEmployees !== false) {
+      // Chỉ hiện Thiết lập khi đã XÁC NHẬN server trống. Nếu server đã có dữ liệu,
+      // hoặc chưa xác định được (mất mạng) -> ưu tiên hiện Đăng nhập, an toàn hơn
+      // (tránh lỡ tạo thêm 1 tài khoản Admin mới khi thực ra hệ thống đã có người dùng).
+      app.innerHTML = renderLoginScreen(); bindLoginScreen(); return;
+    }
+    app.innerHTML = renderSetupScreen(); bindSetupScreen(); return;
+  }
+  if (!currentUser()) { app.innerHTML = renderLoginScreen(); bindLoginScreen(); return; }
+
+  const u = currentUser();
+  const NAV = [
+    { key: "checkin", label: "Chấm công" },
+    ...(canSeeEmployeesTab(u) ? [{ key: "employees", label: "Nhân viên" }] : []),
+    { key: "history", label: "Bảng công" },
+    ...(canSeeReportTab(u) ? [{ key: "report", label: "Báo cáo" }] : []),
+    { key: "more", label: "Thêm" },
+  ];
+  const navBtnHtml = (n) => {
+    const isActive = currentTab === n.key || (n.key === "more" && currentTab === "settings");
+    return `<button class="${isActive ? "active" : ""}" data-tab="${n.key}">${ICONS[n.key] || ""}<span>${n.label}</span></button>`;
+  };
+
+  app.innerHTML = `
+    <div class="content" id="content"></div>
+    <div class="nav">
+      ${NAV.map(navBtnHtml).join("")}
+    </div>
+    ${renderOverlayShell()}
+  `;
+  document.querySelectorAll(".nav button").forEach((b) => b.onclick = () => {
+    if (b.dataset.tab === "more") { openQuickActions(u); return; }
+    switchTab(b.dataset.tab);
+  });
+
+  const content = document.getElementById("content");
+  const renderers = { checkin: renderCheckin, employees: renderEmployees, history: renderHistory, report: renderReport, settings: renderSettings };
+  const fn = renderers[currentTab] || renderCheckin;
+  content.innerHTML = fn(u);
+  bindScreenEvents(currentTab, u);
+}
+
+function renderOverlayShell() {
+  return `<div class="overlay" id="overlay"><div class="sheet" id="sheetContent"></div></div>`;
+}
+function openSheet(html) {
+  document.getElementById("sheetContent").innerHTML = html;
+  document.getElementById("overlay").classList.add("show");
+}
+function closeSheet() { document.getElementById("overlay").classList.remove("show"); }
+
+// =====================================================================
+// SCREEN: THIẾT LẬP LẦN ĐẦU
+// =====================================================================
+function renderSetupScreen() {
+  return `
+  <div style="min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:24px;
+       background:linear-gradient(160deg,var(--primary),var(--primaryDark));">
+    <div style="text-align:center;color:#fff;margin-bottom:24px;">
+      <div style="font-size:24px;font-weight:800;">Era Chấm Công</div>
+      <div style="font-size:13px;opacity:.85;margin-top:4px;">Thiết lập lần đầu — tạo tài khoản Quản trị</div>
+    </div>
+    <div class="card" style="max-width:380px;margin:0 auto;width:100%;">
+      <input class="input" id="su_ten" placeholder="Họ tên của bạn" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" name="su_hoten_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <input class="input" id="su_ma" placeholder="Mã nhân viên (VD: NV001)" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="su_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Đặt mã PIN (4-6 số)</label>
+      ${renderPinEntry("su_pin", 6)}
+      <div id="su_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+      <button class="btn btn-primary" id="su_submit">Tạo tài khoản & bắt đầu</button>
+    </div>
+  </div>`;
+}
+function bindSetupScreen() {
+  resetPinValue("su_pin");
+  bindPinEntry("su_pin", 6);
+  document.getElementById("su_submit").onclick = async () => {
+    const ten = document.getElementById("su_ten").value.trim();
+    const ma = document.getElementById("su_ma").value.trim();
+    const pin = getPinValue("su_pin");
+    const err = document.getElementById("su_err");
+    if (!ten || !ma || !pin) { err.textContent = "Vui lòng nhập đủ thông tin."; return; }
+    err.textContent = "Đang tạo tài khoản...";
+    await createFirstAdmin(ten, ma, pin);
+    renderApp();
+  };
+}
+
+// =====================================================================
+// SCREEN: ĐĂNG NHẬP
+// =====================================================================
+function renderLoginScreen() {
+  return `
+  <div style="min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:24px;
+       background:linear-gradient(160deg,var(--primary),var(--primaryDark));">
+    <div style="text-align:center;color:#fff;margin-bottom:24px;">
+      <div style="font-size:24px;font-weight:800;">Era Chấm Công</div>
+      <div style="font-size:13px;opacity:.85;margin-top:4px;">Đăng nhập bằng mã nhân viên</div>
+    </div>
+    <div class="card" style="max-width:380px;margin:0 auto;width:100%;">
+      <input class="input" id="li_ma" placeholder="Mã nhân viên" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="li_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Mã PIN</label>
+      ${renderPinEntry("li_pin", 6)}
+      <div id="li_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+      <button class="btn btn-primary" id="li_submit">Đăng nhập</button>
+    </div>
+  </div>`;
+}
+function bindLoginScreen() {
+  resetPinValue("li_pin");
+  bindPinEntry("li_pin", 6);
+  document.getElementById("li_submit").onclick = async () => {
+    const ma = document.getElementById("li_ma").value.trim();
+    const pin = getPinValue("li_pin");
+    const err = document.getElementById("li_err");
+    if (!ma || !pin) { err.textContent = "Nhập đủ mã NV và PIN."; return; }
+    err.textContent = "Đang kiểm tra...";
+    const r = await doLogin(ma, pin);
+    if (!r.ok) { err.textContent = r.error; resetPinValue("li_pin"); bindPinEntry("li_pin", 6); return; }
+    renderApp();
+    syncPull(true);
+  };
+}
+
+// =====================================================================
+// SCREEN: CHẤM CÔNG
+// =====================================================================
+function todayKey() { return nowVNDayKey(); }
+function todayVN() { return nowVNDateStr(); }
+function myTodayRecord(u) {
+  return state.records.find((r) => !r.deleted && r.employeeId === u.id && r.dayKey === todayKey());
+}
+
+// So sánh giờ vào thực tế với Giờ vào chuẩn + Số phút cho phép trễ (trong Cài đặt).
+// Trả về true nếu đi trễ vượt quá mức cho phép.
+function isLate(gioVaoStr) {
+  if (!gioVaoStr || !state.config.gioChuan) return false;
+  const toMin = (s) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const actual = toMin(gioVaoStr);
+  const allowed = toMin(state.config.gioChuan) + (Number(state.config.soPhutChoPhepTre) || 0);
+  return actual > allowed;
+}
+
+// So sánh giờ ra thực tế với Giờ ra chuẩn - về sớm nếu ra trước quá mức cho phép
+function isEarlyLeave(gioRaStr) {
+  if (!gioRaStr || !state.config.gioRaChuan) return false;
+  const toMin = (s) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const actual = toMin(gioRaStr);
+  const allowed = toMin(state.config.gioRaChuan) - (Number(state.config.soPhutChoPhepTre) || 0);
+  return actual < allowed;
+}
+
+// Số giờ làm thêm = thời gian làm việc SAU giờ ra chuẩn (nếu có)
+function overtimeHours(record) {
+  if (!record || !record.gioRa || !state.config.gioRaChuan) return 0;
+  const toMin = (s) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const diff = toMin(record.gioRa) - toMin(state.config.gioRaChuan);
+  return diff > 0 ? Math.round((diff / 60) * 100) / 100 : 0;
+}
+
+// Tính 4 chỉ số tổng quan tháng cho 1 nhân viên: tổng công, giờ làm thêm, số lần trễ/sớm, số ngày nghỉ
+function computeMonthStats(employeeId, year, month) {
+  const prefix = `${year}-${String(month).padStart(2, "0")}`;
+  const monthRecords = state.records.filter((r) => !r.deleted && r.employeeId === employeeId && r.dayKey && r.dayKey.startsWith(prefix));
+  let tongCong = 0, tongGioLamThem = 0, soLanTreSom = 0;
+  monthRecords.forEach((r) => {
+    if (r.gioVao) tongCong += 1;
+    tongGioLamThem += overtimeHours(r);
+    if ((r.gioVao && isLate(r.gioVao)) || (r.gioRa && isEarlyLeave(r.gioRa))) soLanTreSom += 1;
+  });
+  const soNgayNghi = state.leaveRequests
+    .filter((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet")
+    .reduce((sum, l) => sum + daysInLeaveWithinMonth(l, year, month), 0);
+  return { tongCong, tongGioLamThem, soLanTreSom, soNgayNghi, records: monthRecords };
+}
+
+// Đếm số ngày của 1 đơn nghỉ phép rơi vào đúng tháng đang xét (đơn có thể trải dài nhiều tháng)
+function daysInLeaveWithinMonth(leave, year, month) {
+  if (!leave.tuNgay || !leave.denNgay) return 0;
+  const start = new Date(leave.tuNgay + "T00:00:00");
+  const end = new Date(leave.denNgay + "T00:00:00");
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const from = start > monthStart ? start : monthStart;
+  const to = end < monthEnd ? end : monthEnd;
+  if (from > to) return 0;
+  return Math.round((to - from) / 86400000) + 1;
+}
+
+function renderCheckin(u) {
+  const rec = myTodayRecord(u);
+  const checkedIn = rec && rec.gioVao && !rec.gioRa;
+  const done = rec && rec.gioVao && rec.gioRa;
+  const late = rec && rec.gioVao && isLate(rec.gioVao);
+  const timeStr = nowVNTimeStr();
+  const dateStr = nowVNWeekdayLong();
+
+  let statusLabel = "Chưa vào", statusBg = "#FBEAEA", statusColor = "var(--red)";
+  if (done) { statusLabel = late ? "Hoàn tất (đi trễ)" : "Hoàn tất"; statusBg = late ? "#FDF3E4" : "#E7F8F0"; statusColor = late ? "var(--amber)" : "var(--green)"; }
+  else if (checkedIn) { statusLabel = late ? "Đang làm (đi trễ)" : "Đang làm"; statusBg = late ? "#FDF3E4" : "#E9F1FF"; statusColor = late ? "var(--amber)" : "var(--primary)"; }
+
+  const p = nowVNParts();
+  const stats = computeMonthStats(u.id, Number(p.year), Number(p.month));
+  const lastRecord = [...state.records].filter((r) => !r.deleted && r.employeeId === u.id && r.gioVao)
+    .sort((a, b) => (a.dayKey + (a.gioVao || "") < b.dayKey + (b.gioVao || "") ? 1 : -1))[0];
+  const unread = unreadNotifCount(u);
+
+  return `
+  <div class="header" style="display:flex;align-items:center;justify-content:space-between;">
+    <div class="title">Era Chấm Công · ${u.hoTen}</div>
+    <button type="button" id="btnNotif" style="position:relative;background:rgba(255,255,255,0.18);border:none;border-radius:10px;width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;">
+      🔔
+      ${unread > 0 ? `<span style="position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:999px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;">${unread > 9 ? "9+" : unread}</span>` : ""}
+    </button>
+  </div>
+  <div class="pad">
+    <div class="card" style="text-align:center;">
+      <div class="sub" style="text-transform:capitalize;">${dateStr}</div>
+      <div id="clock" style="font-size:38px;font-weight:800;color:var(--ink);margin:6px 0 18px;font-variant-numeric:tabular-nums;">${timeStr}</div>
+      <button class="btn" id="btnCheck" style="width:144px;height:144px;border-radius:50%;margin:0 auto;
+        background:${done ? "#B9C0D4" : checkedIn ? "linear-gradient(135deg,var(--red),#C93A3E)" : "linear-gradient(135deg,var(--teal),#0A8F82)"};
+        color:#fff;" ${done ? "disabled" : ""}>
+        ${done ? "Đã hoàn tất hôm nay" : checkedIn ? "Chấm công ra" : "Chấm công vào"}
+      </button>
+      <div id="ckMsg" style="color:var(--red);font-size:12.5px;margin-top:10px;"></div>
+      <div style="display:flex;justify-content:space-around;border-top:1px solid var(--line);padding-top:14px;margin-top:16px;">
+        <div><div class="sub">Giờ vào</div><div style="font-weight:700;">${(rec && rec.gioVao) || "—"}</div></div>
+        <div><div class="sub">Giờ ra</div><div style="font-weight:700;">${(rec && rec.gioRa) || "—"}</div></div>
+        <div><div class="sub">Trạng thái</div><div style="margin-top:2px;">
+          <span class="pill" style="background:${statusBg};color:${statusColor};">${statusLabel}</span>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:2px;">Tổng hợp công — Tháng ${Number(p.month)}/${p.year}</div>
+      ${lastRecord ? `<div class="sub" style="margin-bottom:10px;">Lần chấm công gần nhất: ${lastRecord.gioVao} · ${lastRecord.ngay}</div>` : `<div class="sub" style="margin-bottom:10px;">Chưa có lần chấm công nào.</div>`}
+      <div data-stat-row="tongCong" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;">
+        <span>Tổng công hưởng lương</span><span style="display:flex;align-items:center;gap:4px;"><b>${stats.tongCong}</b><span class="sub">›</span></span>
+      </div>
+      <div data-stat-row="tongGioLamThem" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;">
+        <span>Tổng giờ làm thêm</span><span style="display:flex;align-items:center;gap:4px;"><b>${stats.tongGioLamThem.toFixed(1)}h</b><span class="sub">›</span></span>
+      </div>
+      <div data-stat-row="treSom" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;">
+        <span>Số lần đi muộn, về sớm</span><span style="display:flex;align-items:center;gap:4px;"><b style="color:${stats.soLanTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${stats.soLanTreSom}</b><span class="sub">›</span></span>
+      </div>
+      <div data-stat-row="ngayNghi" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;">
+        <span>Số ngày nghỉ</span><span style="display:flex;align-items:center;gap:4px;"><b>${stats.soNgayNghi}</b><span class="sub">›</span></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindScreenEventsCheckin(u) {
+  const clockEl = document.getElementById("clock");
+  if (clockEl) {
+    clearInterval(window._clockTimer);
+    window._clockTimer = setInterval(() => {
+      const el = document.getElementById("clock");
+      if (!el) { clearInterval(window._clockTimer); return; }
+      el.textContent = nowVNTimeStr();
+    }, 1000);
+  }
+
+  const p = nowVNParts();
+  document.querySelectorAll("[data-stat-row]").forEach((row) => {
+    row.onclick = () => openStatDetail(row.dataset.statRow, u, Number(p.year), Number(p.month));
+  });
+
+  const notifBtn = document.getElementById("btnNotif");
+  if (notifBtn) notifBtn.onclick = () => openNotificationsSheet(u);
+
+  const btn = document.getElementById("btnCheck");
+  if (!btn) return;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const msg = document.getElementById("ckMsg");
+    msg.textContent = "Đang xác định vị trí...";
+
+    const loc = await getLocation();
+
+    if (state.config.batBuocGPS) {
+      // Admin chưa đặt vị trí công ty -> chặn tuyệt đối, không cho chấm công
+      if (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null) {
+        msg.textContent = "Chưa cấu hình vị trí công ty. Liên hệ Admin để cài đặt trước khi chấm công.";
+        btn.disabled = false; return;
+      }
+      // Không lấy được vị trí (từ chối quyền, thiết bị không hỗ trợ...) -> chặn
+      if (!loc) {
+        msg.textContent = "Không lấy được vị trí của bạn. Vui lòng bật quyền định vị (GPS) rồi thử lại.";
+        btn.disabled = false; return;
+      }
+      const d = distMeters(loc, state.config.viTriCongTy);
+      if (d != null && d > state.config.banKinhGPS) {
+        msg.textContent = `Bạn đang cách văn phòng ${Math.round(d)}m (cho phép tối đa ${state.config.banKinhGPS}m). Cần đến đúng vị trí công ty để chấm công.`;
+        btn.disabled = false; return;
+      }
+      msg.textContent = "";
+    }
+
+    let rec = myTodayRecord(u);
+    const nowStr = nowVNTimeStr();
+    if (!rec) {
+      rec = { id: genId("CC"), employeeId: u.id, dayKey: todayKey(), ngay: todayVN(), gioVao: nowStr, gioRa: "", viTriVao: loc ? `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}` : "", viTriRa: "", tongGio: "", ghiChu: "", updatedAt: nowMs(), deleted: false };
+      state.records.push(rec);
+    } else if (!rec.gioRa) {
+      rec.gioRa = nowStr;
+      rec.viTriRa = loc ? `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}` : "";
+      rec.tongGio = calcHours(rec.gioVao, rec.gioRa);
+      rec.updatedAt = nowMs();
+    }
+    saveLocal();
+    renderApp();
+    scheduleSync();
+    toast("Đã ghi nhận chấm công.");
+  };
+}
+
+function openStatDetail(kind, u, year, month) {
+  const stats = computeMonthStats(u.id, year, month);
+  let title = "", rowsHtml = "";
+
+  if (kind === "tongCong") {
+    title = "Chi tiết công hưởng lương";
+    const days = stats.records.filter((r) => r.gioVao).sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
+    rowsHtml = days.length === 0 ? `<div class="empty">Chưa có ngày công nào.</div>` :
+      days.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
+        <span>${r.ngay}</span><span class="sub">${r.gioVao} → ${r.gioRa || "—"}</span></div>`).join("");
+  } else if (kind === "tongGioLamThem") {
+    title = "Chi tiết giờ làm thêm";
+    const days = stats.records.filter((r) => overtimeHours(r) > 0).sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
+    rowsHtml = days.length === 0 ? `<div class="empty">Chưa có giờ làm thêm nào.</div>` :
+      days.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
+        <span>${r.ngay}</span><span style="color:var(--primary);font-weight:600;">+${overtimeHours(r).toFixed(1)}h (ra lúc ${r.gioRa})</span></div>`).join("");
+  } else if (kind === "treSom") {
+    title = "Chi tiết đi muộn / về sớm";
+    const days = stats.records.filter((r) => (r.gioVao && isLate(r.gioVao)) || (r.gioRa && isEarlyLeave(r.gioRa)))
+      .sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
+    rowsHtml = days.length === 0 ? `<div class="empty">Không có lần đi muộn/về sớm nào.</div>` :
+      days.map((r) => {
+        const reasons = [];
+        if (r.gioVao && isLate(r.gioVao)) reasons.push(`Đi muộn (vào ${r.gioVao})`);
+        if (r.gioRa && isEarlyLeave(r.gioRa)) reasons.push(`Về sớm (ra ${r.gioRa})`);
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;"><span>${r.ngay}</span></div>
+          <div class="sub" style="color:var(--amber);">${reasons.join(" · ")}</div></div>`;
+      }).join("");
+  } else if (kind === "ngayNghi") {
+    title = "Chi tiết ngày nghỉ";
+    const leaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === u.id && l.trangThai === "DaDuyet" && daysInLeaveWithinMonth(l, year, month) > 0);
+    rowsHtml = leaves.length === 0 ? `<div class="empty">Không có ngày nghỉ nào trong tháng.</div>` :
+      leaves.map((l) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${l.loaiNghi}</span><span class="sub">${daysInLeaveWithinMonth(l, year, month)} ngày</span></div>
+        <div class="sub">${l.tuNgay} → ${l.denNgay}</div></div>`).join("");
+  }
+
+  openSheet(`
+    <div class="sheet-title">${title}</div>
+    <div style="max-height:60vh;overflow-y:auto;">${rowsHtml}</div>
+    <button class="btn btn-outline" id="stat_close" style="margin-top:14px;">Đóng</button>
+  `);
+  document.getElementById("stat_close").onclick = closeSheet;
+}
+
+function calcHours(vaoStr, raStr) {
+  const [h1, m1, s1] = vaoStr.split(":").map(Number);
+  const [h2, m2, s2] = raStr.split(":").map(Number);
+  const p1 = h1 * 60 + m1 + (s1 || 0) / 60, p2 = h2 * 60 + m2 + (s2 || 0) / 60;
+  return Math.max(0, Math.round(((p2 - p1) / 60) * 100) / 100);
+}
+
+// =====================================================================
+// SCREEN: NHÂN VIÊN (chỉ QuanLy/Admin)
+// =====================================================================
+function renderEmployees(u) {
+  const list = activeEmployees();
+  const admin = isAdmin(u);
+  return `
+  <div class="header"><div class="title">Nhân viên</div></div>
+  <div class="pad">
+    <div class="card" style="padding:0;overflow:hidden;">
+      ${list.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+        list.map((e) => `
+        <div class="list-item" style="padding:12px 16px;">
+          <div class="avatar">${(e.hoTen || "?").split(" ").slice(-1)[0][0]}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;">${e.hoTen}</div>
+            <div class="sub">${e.phongBan || ""} · ${e.chucVu || ""} · ${e.id}</div>
+          </div>
+          <span class="pill" style="background:#E9F1FF;color:var(--primary);margin-right:${admin ? "8px" : "0"};">${e.vaiTro === "Admin" ? "Admin" : e.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên"}</span>
+          ${admin ? `<button class="btn btn-outline" data-edit-emp="${e.id}" style="width:auto;padding:6px 12px;font-size:12px;">Sửa</button>` : ""}
+        </div>`).join("")}
+    </div>
+    <button class="btn btn-primary" id="btnAddEmp" style="margin-top:12px;">+ Thêm nhân viên</button>
+  </div>`;
+}
+function bindEmployeesEvents(u) {
+  const btn = document.getElementById("btnAddEmp");
+  if (btn) btn.onclick = () => openEmployeeForm(u, null);
+  document.querySelectorAll("[data-edit-emp]").forEach((b) => {
+    b.onclick = () => {
+      const emp = state.employees.find((e) => e.id === b.dataset.editEmp);
+      if (emp) openEmployeeForm(u, emp);
+    };
+  });
+}
+
+function openEmployeeForm(u, existing) {
+  const isEdit = !!existing;
+    openSheet(`
+      <div class="sheet-title">${isEdit ? "Sửa nhân viên: " + existing.hoTen : "Thêm nhân viên"}</div>
+      <input class="input" id="em_ma" placeholder="Mã NV" value="${isEdit ? existing.id : ""}" ${isEdit ? "disabled" : "readonly onfocus=\"this.removeAttribute('readonly');\""} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="em_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <input class="input" id="em_ten" placeholder="Họ tên" value="${isEdit ? existing.hoTen : ""}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" name="em_hoten_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <input class="input" id="em_pb" placeholder="Phòng ban" value="${isEdit ? (existing.phongBan || "") : ""}" autocomplete="off" name="em_phongban_field" />
+      <input class="input" id="em_cv" placeholder="Chức vụ" value="${isEdit ? (existing.chucVu || "") : ""}" autocomplete="off" name="em_chucvu_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">${isEdit ? "PIN mới (để trống nếu giữ nguyên)" : "PIN (4-6 số)"}</label>
+      ${renderPinEntry("em_pin", 6)}
+      <label class="sub" style="display:block;margin-bottom:4px;">Vai trò</label>
+      ${renderCustomSelect("em_vt", [
+        { value: "NhanVien", label: "Nhân viên" },
+        { value: "QuanLy", label: "Quản lý" },
+        ...(isAdmin(u) ? [{ value: "Admin", label: "Admin" }] : []),
+      ], isEdit ? existing.vaiTro : "NhanVien")}
+      <div id="em_permBlock" style="border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;${isEdit && existing.vaiTro === "Admin" ? "display:none;" : ""}">
+        <div class="sub" style="font-weight:700;margin-bottom:6px;">Quyền được cấp (ngoài quyền cơ bản)</div>
+        ${Object.entries(PERMISSIONS).map(([key, label]) => `
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;">
+            <input type="checkbox" class="em_perm_cb" data-perm="${key}" ${isEdit && existing.quyen && existing.quyen[key] ? "checked" : ""} /> ${label}
+          </label>`).join("")}
+      </div>
+      <div id="em_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+      <div class="row">
+        <button class="btn btn-outline" id="em_cancel">Huỷ</button>
+        ${isEdit && existing.id !== u.id ? `<button class="btn btn-red" id="em_delete" style="flex:0.7;">Xoá</button>` : ""}
+        <button class="btn btn-primary" id="em_save">Lưu</button>
+      </div>
+    `);
+    resetPinValue("em_pin");
+    bindPinEntry("em_pin");
+    bindCustomSelect("em_vt", (val) => {
+      document.getElementById("em_permBlock").style.display = val === "Admin" ? "none" : "block";
+    });
+    document.getElementById("em_cancel").onclick = closeSheet;
+
+    const deleteBtn = document.getElementById("em_delete");
+    if (deleteBtn) deleteBtn.onclick = () => {
+      existing.deleted = true;
+      existing.updatedAt = nowMs();
+      saveLocal(); closeSheet(); renderApp(); scheduleSync();
+      toast("Đã xoá nhân viên.");
+    };
+
+    document.getElementById("em_save").onclick = () => {
+      const ma = document.getElementById("em_ma").value.trim();
+      const ten = document.getElementById("em_ten").value.trim();
+      const pinInput = getPinValue("em_pin");
+      const err = document.getElementById("em_err");
+      if (!ma || !ten) { err.textContent = "Nhập đủ Mã NV, Họ tên."; return; }
+      if (!isEdit && !pinInput) { err.textContent = "Nhập PIN cho nhân viên mới."; return; }
+      if (!isEdit && activeEmployees().some((e) => e.id === ma)) { err.textContent = "Mã nhân viên đã tồn tại."; return; }
+
+      const quyen = {};
+      document.querySelectorAll(".em_perm_cb").forEach((cb) => { quyen[cb.dataset.perm] = cb.checked; });
+
+      if (isEdit) {
+        existing.hoTen = ten;
+        existing.phongBan = document.getElementById("em_pb").value.trim();
+        existing.chucVu = document.getElementById("em_cv").value.trim();
+        existing.vaiTro = getSelectValue("em_vt");
+        existing.quyen = quyen;
+        if (pinInput) existing.pin = pinInput;
+        existing.updatedAt = nowMs();
+      } else {
+        state.employees.push({
+          id: ma, hoTen: ten, pin: pinInput, phongBan: document.getElementById("em_pb").value.trim(),
+          chucVu: document.getElementById("em_cv").value.trim(), vaiTro: getSelectValue("em_vt"),
+          quyen, trangThai: "DangLam", updatedAt: nowMs(), deleted: false,
+        });
+      }
+      saveLocal(); closeSheet(); renderApp(); scheduleSync();
+      toast(isEdit ? "Đã cập nhật nhân viên." : "Đã thêm nhân viên.");
+    };
+}
+
+// =====================================================================
+// SCREEN: BẢNG CÔNG (theo tháng - dạng lưới lịch hoặc danh sách)
+// =====================================================================
+let bcState = { year: null, month: null, mode: "calendar", employeeId: null };
+function ensureBcState(u) {
+  if (bcState.year == null) {
+    const p = nowVNParts();
+    bcState.year = Number(p.year);
+    bcState.month = Number(p.month);
+  }
+  if (!bcState.employeeId) bcState.employeeId = u.id;
+}
+// =====================================================================
+// BỘ ICON SVG NHỎ GỌN - tự vẽ, không phụ thuộc thư viện/font ngoài
+// =====================================================================
+const ICONS = {
+  checkin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>`,
+  employees: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="9" cy="8" r="3.2"/><path d="M20 19v-1.5a3.2 3.2 0 0 0-2.3-3.1"/><path d="M14.5 5.1a3.2 3.2 0 0 1 0 6.2"/></svg>`,
+  history: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><line x1="15.5" y1="2.5" x2="15.5" y2="6.5"/><line x1="8.5" y1="2.5" x2="8.5" y2="6.5"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/></svg>`,
+  report: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  settings: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 17.6a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.4.55.71.66.28.1.48.34.6.62.09.24.14.5.14.72"/></svg>`,
+  plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
+  clockPen: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="13" r="8"/><polyline points="11 9 11 13 14 15"/></svg>`,
+  leave: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>`,
+  edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  announce: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l3.5 5v-14L6 9H4a1 1 0 0 0-1 1Z"/><path d="M14.5 8.5a5 5 0 0 1 0 7"/><path d="M17.5 5.5a9 9 0 0 1 0 13"/></svg>`,
+};
+
+const VN_WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+function renderHistory(u) {
+  ensureBcState(u);
+  const canViewAll = isAdmin(u) || hasPerm(u, "xemBaoCao") || hasPerm(u, "quanLyNhanVien") || hasPerm(u, "duyetNghiPhep");
+  const viewEmp = activeEmployees().find((e) => e.id === bcState.employeeId) || u;
+  const stats = computeMonthStats(viewEmp.id, bcState.year, bcState.month);
+  const recMap = {};
+  stats.records.forEach((r) => { recMap[r.dayKey] = r; });
+
+  const employeeSelectHtml = canViewAll ? `
+    <label class="sub" style="display:block;margin-bottom:4px;">Xem bảng công của</label>
+    ${renderCustomSelect("bc_emp", [
+      { value: u.id, label: "Tôi (" + u.hoTen + ")" },
+      ...activeEmployees().filter((e) => e.id !== u.id).map((e) => ({ value: e.id, label: e.hoTen })),
+    ], bcState.employeeId)}
+  ` : "";
+
+  return `
+  <div class="header"><div class="title">Bảng công</div></div>
+  <div class="pad">
+    ${employeeSelectHtml}
+    <div class="card" style="padding:12px 14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <button type="button" class="btn btn-outline" id="bc_prev" style="width:auto;padding:8px 14px;">‹</button>
+        <div style="font-weight:700;">Tháng ${bcState.month}/${bcState.year}</div>
+        <button type="button" class="btn btn-outline" id="bc_next" style="width:auto;padding:8px 14px;">›</button>
+      </div>
+      <div class="tabs" style="padding-bottom:0;margin-bottom:0;">
+        <button type="button" data-bcmode="calendar" class="${bcState.mode === "calendar" ? "active" : ""}">Bảng công</button>
+        <button type="button" data-bcmode="list" class="${bcState.mode === "list" ? "active" : ""}">Danh sách</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:18px;font-weight:800;color:var(--primary);">${stats.tongCong}</div><div class="sub" style="font-size:11px;">Công hưởng lương</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:18px;font-weight:800;color:var(--green);">${stats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:11px;">Làm thêm</div></div>
+    </div>
+    <div class="row" style="margin-bottom:12px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:18px;font-weight:800;color:var(--amber);">${stats.soLanTreSom}</div><div class="sub" style="font-size:11px;">Lần trễ/sớm</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:18px;font-weight:800;color:var(--red);">${stats.soNgayNghi}</div><div class="sub" style="font-size:11px;">Ngày nghỉ</div></div>
+    </div>
+
+    ${bcState.mode === "calendar" ? renderBcCalendar(bcState.year, bcState.month, recMap) : renderBcList(stats.records)}
+  </div>`;
+}
+
+function renderBcCalendar(year, month, recMap) {
+  const firstDay = new Date(year, month - 1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstWeekday = (firstDay.getDay() + 6) % 7; // 0=T2 ... 6=CN
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const todayK = nowVNDayKey();
+
+  let html = `<div class="card" style="padding:10px;">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;">
+      ${VN_WEEKDAYS.map((w) => `<div style="text-align:center;font-size:11px;color:var(--sub);font-weight:700;">${w}</div>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">`;
+  cells.forEach((d) => {
+    if (d == null) { html += `<div></div>`; return; }
+    const dayKey = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const rec = recMap[dayKey];
+    let bg = "transparent", color = "var(--ink)";
+    if (rec && rec.gioVao) {
+      const late = isLate(rec.gioVao) || (rec.gioRa && isEarlyLeave(rec.gioRa));
+      bg = late ? "#FDF3E4" : "#E7F8F0";
+      color = late ? "var(--amber)" : "var(--green)";
+    }
+    const isToday = dayKey === todayK;
+    html += `<button type="button" data-bcday="${dayKey}" style="aspect-ratio:1;border:none;border-radius:8px;background:${bg};color:${color};font-size:13px;font-weight:${isToday ? 800 : 600};cursor:pointer;${isToday ? "outline:2px solid var(--primary);outline-offset:-2px;" : ""}">${d}</button>`;
+  });
+  html += `</div></div>`;
+  return html;
+}
+
+function renderBcList(records) {
+  const sorted = [...records].sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
+  if (sorted.length === 0) return `<div class="card"><div class="empty">Chưa có dữ liệu tháng này.</div></div>`;
+  return `<div class="card" style="padding:0;overflow:hidden;">
+    ${sorted.map((r) => {
+      const late = (r.gioVao && isLate(r.gioVao)) || (r.gioRa && isEarlyLeave(r.gioRa));
+      return `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-bcday="${r.dayKey}">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;">${r.ngay} ${late ? '<span class="pill" style="background:#FDF3E4;color:var(--amber);margin-left:6px;">Trễ/Sớm</span>' : ""}</div>
+          <div class="sub">${r.gioVao || "—"} → ${r.gioRa || "—"}</div>
+        </div>
+        <div style="font-weight:700;color:var(--primary);">${r.tongGio ? r.tongGio + "h" : ""}</div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function bindHistoryEvents(u) {
+  ensureBcState(u);
+  const canViewAll = isAdmin(u) || hasPerm(u, "xemBaoCao") || hasPerm(u, "quanLyNhanVien") || hasPerm(u, "duyetNghiPhep");
+  if (canViewAll) bindCustomSelect("bc_emp", (val) => { bcState.employeeId = val; renderApp(); });
+
+  const prevBtn = document.getElementById("bc_prev");
+  if (prevBtn) prevBtn.onclick = () => {
+    bcState.month -= 1;
+    if (bcState.month < 1) { bcState.month = 12; bcState.year -= 1; }
+    renderApp();
+  };
+  const nextBtn = document.getElementById("bc_next");
+  if (nextBtn) nextBtn.onclick = () => {
+    bcState.month += 1;
+    if (bcState.month > 12) { bcState.month = 1; bcState.year += 1; }
+    renderApp();
+  };
+  document.querySelectorAll("[data-bcmode]").forEach((btn) => {
+    btn.onclick = () => { bcState.mode = btn.dataset.bcmode; renderApp(); };
+  });
+
+  const canEdit = hasPerm(u, "suaChamCong");
+  document.querySelectorAll("[data-bcday]").forEach((el) => {
+    el.onclick = () => openDayDetail(el.dataset.bcday, bcState.employeeId, u, canEdit);
+  });
+}
+
+function openDayDetail(dayKey, employeeId, currentUser, canEdit) {
+  const rec = state.records.find((r) => !r.deleted && r.employeeId === employeeId && r.dayKey === dayKey);
+  const emp = state.employees.find((e) => e.id === employeeId);
+  const [y, m, d] = dayKey.split("-");
+  const ngayVN = `${d}/${m}/${y}`;
+  const leave = state.leaveRequests.find((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet" && l.tuNgay <= dayKey && l.denNgay >= dayKey);
+  const isOwnDay = employeeId === currentUser.id;
+  const existingRequest = state.correctionRequests
+    .filter((c) => !c.deleted && c.employeeId === employeeId && c.ngayCanSua === dayKey)
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+
+  let statusText = "Chưa chấm công", statusColor = "var(--sub)";
+  if (leave) { statusText = "Nghỉ (" + leave.loaiNghi + ")"; statusColor = "var(--red)"; }
+  else if (rec && rec.gioVao && rec.gioRa) {
+    const late = isLate(rec.gioVao) || isEarlyLeave(rec.gioRa);
+    statusText = late ? "Đi làm (đi muộn/về sớm)" : "Đi làm — Đủ công";
+    statusColor = late ? "var(--amber)" : "var(--green)";
+  } else if (rec && rec.gioVao) {
+    statusText = "Đang làm (chưa chấm ra)"; statusColor = "var(--primary)";
+  }
+
+  const ot = rec ? overtimeHours(rec) : 0;
+  openSheet(`
+    <div class="sheet-title">Chi tiết ngày ${ngayVN}${emp ? " — " + emp.hoTen : ""}</div>
+    <div class="sub" style="margin-bottom:10px;color:${statusColor};font-weight:700;">${statusText}</div>
+    ${rec ? `
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><span class="sub">Giờ vào</span><span style="font-weight:700;">${rec.gioVao || "—"}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><span class="sub">Giờ ra</span><span style="font-weight:700;">${rec.gioRa || "—"}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><span class="sub">Tổng giờ làm</span><span style="font-weight:700;">${rec.tongGio ? rec.tongGio + "h" : "—"}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;${rec.ghiChu ? "border-bottom:1px solid var(--line);" : ""}"><span class="sub">Giờ làm thêm</span><span style="font-weight:700;color:var(--green);">${ot > 0 ? "+" + ot.toFixed(1) + "h" : "—"}</span></div>
+      ${rec.ghiChu ? `<div style="padding:8px 0;"><div class="sub">Ghi chú</div><div>${rec.ghiChu}</div></div>` : ""}
+    ` : `<div class="empty">${leave ? "" : "Chưa có dữ liệu chấm công ngày này."}</div>`}
+    ${existingRequest ? `<div style="margin-top:10px;padding:10px;background:#F3F5F9;border-radius:10px;">
+      <div class="sub" style="margin-bottom:4px;">Đề nghị gần nhất cho ngày này:</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;">${existingRequest.gioVaoDeXuat || "—"} → ${existingRequest.gioRaDeXuat || "—"}</span>
+        <span class="pill" style="background:${existingRequest.trangThai === "DaDuyet" ? "#E7F8F0" : existingRequest.trangThai === "TuChoi" ? "#FBEAEA" : "#FDF3E4"};color:${existingRequest.trangThai === "DaDuyet" ? "var(--green)" : existingRequest.trangThai === "TuChoi" ? "var(--red)" : "var(--amber)"};">
+          ${existingRequest.trangThai === "DaDuyet" ? "Đã duyệt" : existingRequest.trangThai === "TuChoi" ? "Từ chối" : "Chờ duyệt"}</span>
+      </div>
+    </div>` : ""}
+    <div class="row" style="margin-top:14px;">
+      <button class="btn btn-outline" id="dd_close">Đóng</button>
+      ${rec && canEdit ? `<button class="btn btn-primary" id="dd_edit">Sửa</button>` : ""}
+    </div>
+    ${isOwnDay ? `<button class="btn btn-outline" id="dd_request" style="margin-top:8px;">Đề nghị cập nhật công</button>` : ""}
+  `);
+  document.getElementById("dd_close").onclick = closeSheet;
+  const editBtn = document.getElementById("dd_edit");
+  if (editBtn) editBtn.onclick = () => openEditRecordForm(currentUser, rec.id);
+  const requestBtn = document.getElementById("dd_request");
+  if (requestBtn) requestBtn.onclick = () => openCorrectionRequestForm(currentUser, dayKey, rec);
+}
+let pendingCorrectionImage = null; // lưu tạm ảnh đã nén (base64) trước khi gửi
+
+function openAnnouncementForm(u) {
+  const targetOptions = [
+    { value: "ALL", label: "Tất cả nhân viên" },
+    ...activeEmployees().filter((e) => e.id !== u.id).map((e) => ({ value: e.id, label: e.hoTen })),
+  ];
+  openSheet(`
+    <div class="sheet-title">Gửi thông báo</div>
+    <label class="sub" style="display:block;margin-bottom:4px;">Gửi đến</label>
+    ${renderCustomSelect("tb_target", targetOptions, "ALL")}
+    <label class="sub" style="display:block;margin-bottom:4px;">Tiêu đề (không bắt buộc)</label>
+    <input class="input" id="tb_title" placeholder="VD: Thông báo nghỉ lễ" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="tb_title_field" />
+    <label class="sub" style="display:block;margin-bottom:4px;">Nội dung</label>
+    <textarea class="input" id="tb_content" placeholder="Nhập nội dung thông báo..." style="min-height:90px;"></textarea>
+    <div id="tb_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="row"><button class="btn btn-outline" id="tb_cancel">Huỷ</button><button class="btn btn-primary" id="tb_send">Gửi thông báo</button></div>
+  `);
+  bindCustomSelect("tb_target");
+  document.getElementById("tb_cancel").onclick = closeSheet;
+  document.getElementById("tb_send").onclick = () => {
+    const noiDung = document.getElementById("tb_content").value.trim();
+    const err = document.getElementById("tb_err");
+    if (!noiDung) { err.textContent = "Vui lòng nhập nội dung thông báo."; return; }
+    state.announcements.push({
+      id: genId("TB"), nguoiGui: u.id, hoTenNguoiGui: u.hoTen,
+      tieuDe: document.getElementById("tb_title").value.trim(),
+      noiDung, doiTuong: getSelectValue("tb_target"),
+      updatedAt: nowMs(), deleted: false,
+    });
+    saveLocal(); closeSheet(); renderApp(); scheduleSync();
+    toast("Đã gửi thông báo.");
+  };
+}
+
+function openCorrectionRequestForm(u, dayKey, existingRecord) {
+  pendingCorrectionImage = null;
+  openSheet(`
+    <div class="sheet-title">Đề nghị cập nhật công</div>
+    <label class="sub" style="display:block;margin-bottom:4px;">Ngày cần sửa</label>
+    ${renderCustomDate("dnsc_ngay", dayKey)}
+    <label class="sub" style="display:block;margin-bottom:4px;">Giờ vào đề xuất</label>
+    ${renderCustomTime("dnsc_gv", (existingRecord && existingRecord.gioVao) || state.config.gioChuan)}
+    <label class="sub" style="display:block;margin-bottom:4px;">Giờ ra đề xuất</label>
+    ${renderCustomTime("dnsc_gr", (existingRecord && existingRecord.gioRa) || state.config.gioRaChuan)}
+    <label class="sub" style="display:block;margin-bottom:4px;">Lý do đề nghị cập nhật</label>
+    <textarea class="input" id="dnsc_lydo" placeholder="VD: quên chấm công ra, máy hết pin lúc vào ca..." style="min-height:70px;"></textarea>
+    <label class="sub" style="display:block;margin-bottom:4px;">Ảnh minh chứng (không bắt buộc)</label>
+    <input type="file" accept="image/*" id="dnsc_anh" style="margin-bottom:6px;" />
+    <div id="dnsc_anh_preview" style="margin-bottom:10px;"></div>
+    <div id="dnsc_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="row"><button class="btn btn-outline" id="dnsc_cancel">Huỷ</button><button class="btn btn-primary" id="dnsc_save">Gửi đề nghị</button></div>
+  `);
+  bindCustomDate("dnsc_ngay");
+  bindCustomTime("dnsc_gv");
+  bindCustomTime("dnsc_gr");
+
+  document.getElementById("dnsc_anh").onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const preview = document.getElementById("dnsc_anh_preview");
+    preview.innerHTML = `<span class="sub">Đang xử lý ảnh...</span>`;
+    try {
+      const dataUrl = await compressImageFile(file);
+      if (!dataUrl) {
+        preview.innerHTML = `<span style="color:var(--red);font-size:12.5px;">Ảnh quá lớn, không thể đính kèm. Vui lòng chọn ảnh khác.</span>`;
+        pendingCorrectionImage = null;
+        return;
+      }
+      pendingCorrectionImage = dataUrl;
+      preview.innerHTML = `<img src="${dataUrl}" style="max-width:120px;border-radius:8px;border:1px solid var(--line);" />`;
+    } catch (err) {
+      preview.innerHTML = `<span style="color:var(--red);font-size:12.5px;">Không đọc được ảnh, thử lại.</span>`;
+    }
+  };
+
+  document.getElementById("dnsc_cancel").onclick = closeSheet;
+  document.getElementById("dnsc_save").onclick = () => {
+    const ngay = getCustomDateValue("dnsc_ngay");
+    const lyDo = document.getElementById("dnsc_lydo").value.trim();
+    const err = document.getElementById("dnsc_err");
+    if (!lyDo) { err.textContent = "Vui lòng nhập lý do đề nghị cập nhật."; return; }
+    state.correctionRequests.push({
+      id: genId("DNSC"), employeeId: u.id, ngayCanSua: ngay,
+      gioVaoDeXuat: getCustomTimeValue("dnsc_gv"), gioRaDeXuat: getCustomTimeValue("dnsc_gr"),
+      lyDo, anhMinhChung: pendingCorrectionImage || "",
+      trangThai: "ChoDuyet", nguoiDuyet: "", updatedAt: nowMs(), deleted: false,
+    });
+    saveLocal(); closeSheet(); renderApp(); scheduleSync();
+    toast("Đã gửi đề nghị cập nhật công, chờ duyệt.");
+  };
+}
+
+function openEditRecordForm(u, recordId) {
+  const rec = state.records.find((r) => r.id === recordId);
+  if (!rec) return;
+  const emp = state.employees.find((e) => e.id === rec.employeeId);
+  openSheet(`
+    <div class="sheet-title">Sửa giờ chấm công — ${emp ? emp.hoTen : rec.employeeId}</div>
+    <div class="sub" style="margin-bottom:10px;">Ngày: ${rec.ngay}</div>
+    <label class="sub">Giờ vào (HH:MM:SS)</label>
+    <input class="input" id="rec_gv" value="${rec.gioVao || ""}" placeholder="08:00:00" />
+    <label class="sub">Giờ ra (HH:MM:SS, để trống nếu chưa ra)</label>
+    <input class="input" id="rec_gr" value="${rec.gioRa || ""}" placeholder="17:30:00" />
+    <label class="sub">Ghi chú</label>
+    <textarea class="input" id="rec_ghichu" placeholder="VD: quên chấm công, đi công tác..." style="min-height:60px;">${rec.ghiChu || ""}</textarea>
+    <div id="rec_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="row"><button class="btn btn-outline" id="rec_cancel">Huỷ</button><button class="btn btn-primary" id="rec_save">Lưu</button></div>
+  `);
+  document.getElementById("rec_cancel").onclick = closeSheet;
+  document.getElementById("rec_save").onclick = () => {
+    const gv = document.getElementById("rec_gv").value.trim();
+    const gr = document.getElementById("rec_gr").value.trim();
+    const err = document.getElementById("rec_err");
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+    if (gv && !timePattern.test(gv)) { err.textContent = "Giờ vào không đúng định dạng HH:MM hoặc HH:MM:SS."; return; }
+    if (gr && !timePattern.test(gr)) { err.textContent = "Giờ ra không đúng định dạng HH:MM hoặc HH:MM:SS."; return; }
+    const oldVals = { gioVao: rec.gioVao, gioRa: rec.gioRa };
+    rec.gioVao = gv ? (gv.length === 5 ? gv + ":00" : gv) : "";
+    rec.gioRa = gr ? (gr.length === 5 ? gr + ":00" : gr) : "";
+    rec.ghiChu = document.getElementById("rec_ghichu").value.trim();
+    rec.tongGio = (rec.gioVao && rec.gioRa) ? calcHours(rec.gioVao, rec.gioRa) : "";
+    rec.updatedAt = nowMs();
+    if (oldVals.gioVao !== rec.gioVao || oldVals.gioRa !== rec.gioRa) {
+      logAuditChange(rec.employeeId, rec.dayKey, u.id, oldVals, { gioVao: rec.gioVao, gioRa: rec.gioRa }, "Sửa trực tiếp bởi " + u.hoTen, "SuaTrucTiep");
+    }
+    saveLocal(); closeSheet(); renderApp(); scheduleSync();
+    toast("Đã cập nhật giờ chấm công.");
+  };
+}
+
+// =====================================================================
+// SCREEN: BÁO CÁO (chỉ QuanLy/Admin)
+// =====================================================================
+function renderReport(u) {
+  const records = state.records.filter((r) => !r.deleted);
+  const byEmp = {};
+  records.forEach((r) => {
+    if (!byEmp[r.employeeId]) byEmp[r.employeeId] = { tongGio: 0, soNgay: 0, soNgayTre: 0 };
+    byEmp[r.employeeId].tongGio += Number(r.tongGio) || 0;
+    if (r.gioVao) byEmp[r.employeeId].soNgay += 1;
+    if (r.gioVao && isLate(r.gioVao)) byEmp[r.employeeId].soNgayTre += 1;
+  });
+  const rows = Object.entries(byEmp).map(([id, v]) => {
+    const emp = state.employees.find((e) => e.id === id);
+    return { id, hoTen: emp ? emp.hoTen : id, phongBan: emp ? emp.phongBan : "", ...v };
+  }).sort((a, b) => b.tongGio - a.tongGio);
+  const totalHours = rows.reduce((s, r) => s + r.tongGio, 0);
+
+  const pendingLeaves = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet");
+  const pendingCorrections = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
+  const recentAudit = [...state.auditLog].filter((a) => !a.deleted).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 15);
+
+  return `
+  <div class="header"><div class="title">Báo cáo</div></div>
+  <div class="pad">
+    <div class="row" style="margin-bottom:12px;">
+      <div class="card" style="flex:1;margin-bottom:0;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub">Nhân viên có công</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;"><div style="font-size:20px;font-weight:800;color:var(--green);">${totalHours.toFixed(1)}</div><div class="sub">Tổng giờ công</div></div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Chi tiết theo nhân viên</div>
+      ${rows.length === 0 ? `<div class="empty">Chưa có dữ liệu.</div>` :
+        rows.map((r) => `<div class="list-item" style="padding:12px 16px;">
+          <div style="flex:1;"><div style="font-weight:600;">${r.hoTen}</div><div class="sub">${r.phongBan} · ${r.soNgay} ngày công${r.soNgayTre > 0 ? ` · <span style="color:var(--amber);">${r.soNgayTre} lần trễ</span>` : ""}</div></div>
+          <div style="font-weight:700;color:var(--primary);">${r.tongGio.toFixed(1)}h</div>
+        </div>`).join("")}
+    </div>
+
+    <div style="height:12px;"></div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Đơn nghỉ phép chờ duyệt (${pendingLeaves.length})</div>
+      ${pendingLeaves.length === 0 ? `<div class="empty">Không có đơn chờ duyệt.</div>` :
+        pendingLeaves.map((l) => {
+          const emp = state.employees.find((e) => e.id === l.employeeId);
+          const canApprove = isAdmin(u) || hasPerm(u, "duyetNghiPhep");
+          return `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
+            <div style="font-weight:600;">${emp ? emp.hoTen : l.employeeId} — ${l.loaiNghi}</div>
+            <div class="sub" style="margin:4px 0;">${l.tuNgay} → ${l.denNgay} · ${l.lyDo || ""}</div>
+            ${canApprove ? `<div class="row">
+              <button class="btn btn-green" data-approve="${l.id}" style="padding:8px 0;font-size:12.5px;">Duyệt</button>
+              <button class="btn btn-red" data-reject="${l.id}" style="padding:8px 0;font-size:12.5px;">Từ chối</button>
+            </div>` : `<div class="sub" style="font-style:italic;">Bạn không có quyền duyệt đơn — cần Admin cấp quyền.</div>`}
+          </div>`;
+        }).join("")}
+    </div>
+
+    <div style="height:12px;"></div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Đề nghị sửa công chờ duyệt (${pendingCorrections.length})</div>
+      ${pendingCorrections.length === 0 ? `<div class="empty">Không có đề nghị chờ duyệt.</div>` :
+        pendingCorrections.map((c) => {
+          const emp = state.employees.find((e) => e.id === c.employeeId);
+          const canApprove = isAdmin(u) || hasPerm(u, "duyetDeNghiCong");
+          return `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
+            <div style="font-weight:600;">${emp ? emp.hoTen : c.employeeId} — ngày ${c.ngayCanSua}</div>
+            <div class="sub" style="margin:4px 0;">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"}</div>
+            <div class="sub" style="margin-bottom:6px;">Lý do: ${c.lyDo || ""}</div>
+            ${c.anhMinhChung ? `<img src="${c.anhMinhChung}" style="max-width:140px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px;display:block;" />` : ""}
+            ${canApprove ? `<div class="row">
+              <button class="btn btn-green" data-approve-cor="${c.id}" style="padding:8px 0;font-size:12.5px;">Duyệt</button>
+              <button class="btn btn-red" data-reject-cor="${c.id}" style="padding:8px 0;font-size:12.5px;">Từ chối</button>
+            </div>` : `<div class="sub" style="font-style:italic;">Bạn không có quyền duyệt — cần Admin cấp quyền.</div>`}
+          </div>`;
+        }).join("")}
+    </div>
+
+    ${(isAdmin(u) || hasPerm(u, "suaChamCong") || hasPerm(u, "duyetDeNghiCong")) ? `
+    <div style="height:12px;"></div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Lịch sử thay đổi công gần đây</div>
+      ${recentAudit.length === 0 ? `<div class="empty">Chưa có thay đổi nào.</div>` :
+        recentAudit.map((a) => {
+          const emp = state.employees.find((e) => e.id === a.employeeId);
+          const nguoi = state.employees.find((e) => e.id === a.nguoiThucHien);
+          return `<div style="padding:10px 16px;border-bottom:1px solid var(--line);font-size:12.5px;">
+            <div style="font-weight:600;">${emp ? emp.hoTen : a.employeeId} — ngày ${a.ngay}</div>
+            <div class="sub">${a.gioVaoCu || "—"}→${a.gioRaCu || "—"} ⟶ <span style="color:var(--primary);font-weight:600;">${a.gioVaoMoi || "—"}→${a.gioRaMoi || "—"}</span></div>
+            <div class="sub">Bởi: ${nguoi ? nguoi.hoTen : a.nguoiThucHien} · ${a.loaiThayDoi === "DuyetDeNghi" ? "Duyệt đề nghị" : "Sửa trực tiếp"}${a.lyDo ? " · " + a.lyDo : ""}</div>
+          </div>`;
+        }).join("")}
+    </div>` : ""}
+  </div>`;
+}
+function bindReportEvents(u) {
+  document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => decideLeave(b.dataset.approve, "DaDuyet", u));
+  document.querySelectorAll("[data-reject]").forEach((b) => b.onclick = () => decideLeave(b.dataset.reject, "TuChoi", u));
+  document.querySelectorAll("[data-approve-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.approveCor, "DaDuyet", u));
+  document.querySelectorAll("[data-reject-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.rejectCor, "TuChoi", u));
+}
+function decideLeave(id, trangThai, u) {
+  const l = state.leaveRequests.find((x) => x.id === id);
+  if (!l) return;
+  l.trangThai = trangThai; l.nguoiDuyet = u.id; l.updatedAt = nowMs();
+  saveLocal(); renderApp(); scheduleSync();
+  toast(trangThai === "DaDuyet" ? "Đã duyệt đơn." : "Đã từ chối đơn.");
+}
+
+// Duyệt/từ chối đề nghị sửa công. Khi duyệt, tự động áp dụng giờ đề xuất
+// vào đúng bản ghi chấm công thật (tạo mới nếu ngày đó chưa có bản ghi).
+function decideCorrection(id, trangThai, u) {
+  const c = state.correctionRequests.find((x) => x.id === id);
+  if (!c) return;
+  c.trangThai = trangThai; c.nguoiDuyet = u.id; c.updatedAt = nowMs();
+
+  if (trangThai === "DaDuyet") {
+    let rec = state.records.find((r) => !r.deleted && r.employeeId === c.employeeId && r.dayKey === c.ngayCanSua);
+    const [y, m, d] = c.ngayCanSua.split("-");
+    const ngayVN = `${d}/${m}/${y}`;
+    const ghiChuMoi = `Cập nhật theo đề nghị #${c.id} (duyệt bởi ${u.hoTen}). Lý do: ${c.lyDo || ""}`;
+    if (!rec) {
+      rec = { id: genId("CC"), employeeId: c.employeeId, dayKey: c.ngayCanSua, ngay: ngayVN, gioVao: "", gioRa: "", viTriVao: "", viTriRa: "", tongGio: "", ghiChu: "", updatedAt: 0, deleted: false };
+      state.records.push(rec);
+    }
+    const oldVals = { gioVao: rec.gioVao, gioRa: rec.gioRa };
+    if (c.gioVaoDeXuat) rec.gioVao = c.gioVaoDeXuat.length === 5 ? c.gioVaoDeXuat + ":00" : c.gioVaoDeXuat;
+    if (c.gioRaDeXuat) rec.gioRa = c.gioRaDeXuat.length === 5 ? c.gioRaDeXuat + ":00" : c.gioRaDeXuat;
+    rec.tongGio = (rec.gioVao && rec.gioRa) ? calcHours(rec.gioVao, rec.gioRa) : "";
+    rec.ghiChu = rec.ghiChu ? rec.ghiChu + " | " + ghiChuMoi : ghiChuMoi;
+    rec.updatedAt = nowMs();
+    logAuditChange(c.employeeId, c.ngayCanSua, u.id, oldVals, { gioVao: rec.gioVao, gioRa: rec.gioRa }, c.lyDo, "DuyetDeNghi");
+  }
+
+  saveLocal(); renderApp(); scheduleSync();
+  toast(trangThai === "DaDuyet" ? "Đã duyệt và cập nhật bản ghi chấm công." : "Đã từ chối đề nghị.");
+}
+
+// =====================================================================
+// SCREEN: NGHỈ PHÉP (nhúng trong Lịch sử? - để đơn giản, gộp vào tab riêng qua nút trong Chấm công)
+// Ở đây làm 1 tab ẩn truy cập qua nút trong "Lịch sử" cho nhân viên thường
+// =====================================================================
+function openLeaveForm(u) {
+  openSheet(`
+    <div class="sheet-title">Tạo đơn nghỉ phép</div>
+    <label class="sub" style="display:block;margin-bottom:4px;">Loại nghỉ</label>
+    ${renderCustomSelect("lv_loai", [
+      { value: "Nghỉ phép năm", label: "Nghỉ phép năm" },
+      { value: "Nghỉ ốm", label: "Nghỉ ốm" },
+      { value: "Nghỉ không lương", label: "Nghỉ không lương" },
+      { value: "Nghỉ việc riêng", label: "Nghỉ việc riêng" },
+    ])}
+    <label class="sub" style="display:block;margin-bottom:4px;">Từ ngày</label>
+    ${renderCustomDate("lv_tu")}
+    <label class="sub" style="display:block;margin-bottom:4px;">Đến ngày</label>
+    ${renderCustomDate("lv_den")}
+    <textarea class="input" id="lv_lydo" placeholder="Lý do" style="min-height:70px;"></textarea>
+    <div id="lv_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="row"><button class="btn btn-outline" id="lv_cancel">Huỷ</button><button class="btn btn-primary" id="lv_save">Gửi đơn</button></div>
+  `);
+  bindCustomSelect("lv_loai");
+  bindCustomDate("lv_tu");
+  bindCustomDate("lv_den");
+  document.getElementById("lv_cancel").onclick = closeSheet;
+  document.getElementById("lv_save").onclick = () => {
+    const tu = getCustomDateValue("lv_tu"), den = getCustomDateValue("lv_den");
+    const err = document.getElementById("lv_err");
+    if (!tu || !den) { err.textContent = "Chọn đủ ngày bắt đầu/kết thúc."; return; }
+    state.leaveRequests.push({
+      id: genId("DN"), employeeId: u.id, loaiNghi: getSelectValue("lv_loai"),
+      tuNgay: tu, denNgay: den, lyDo: document.getElementById("lv_lydo").value.trim(),
+      trangThai: "ChoDuyet", nguoiDuyet: "", updatedAt: nowMs(), deleted: false,
+    });
+    saveLocal(); closeSheet(); renderApp(); scheduleSync();
+    toast("Đã gửi đơn nghỉ phép.");
+  };
+}
+
+// =====================================================================
+// SCREEN: CÀI ĐẶT
+// =====================================================================
+function renderSettings(u) {
+  const admin = isAdmin(u);
+  const myLeaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === u.id)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const myCorrections = state.correctionRequests.filter((c) => !c.deleted && c.employeeId === u.id)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const vaiTroLabel = u.vaiTro === "Admin" ? "Admin" : u.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên";
+
+  return `
+  <div class="header"><div class="title">Cài đặt</div></div>
+  <div class="pad">
+
+    <!-- ===== HỒ SƠ ===== -->
+    <div class="card" style="text-align:center;padding:22px 16px;">
+      <div style="width:60px;height:60px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin:0 auto 10px;">
+        ${(u.hoTen || "?").split(" ").slice(-1)[0][0]}
+      </div>
+      <div style="font-weight:700;font-size:16px;">${u.hoTen}</div>
+      <div class="sub" style="margin:2px 0 8px;">Mã NV: ${u.id} · ${u.phongBan || ""}</div>
+      <span class="pill" style="background:#E9F1FF;color:var(--primary);">${vaiTroLabel}</span>
+      ${!admin ? `<div class="sub" style="margin-top:12px;text-align:left;">
+        <b>Quyền được cấp:</b> ${Object.entries(PERMISSIONS).filter(([k]) => u.quyen && u.quyen[k]).map(([, label]) => label).join(", ") || "Không có quyền đặc biệt nào"}
+      </div>` : ""}
+    </div>
+
+    <!-- ===== YÊU CẦU CỦA TÔI ===== -->
+    <!-- Nút "Tạo đơn nghỉ phép" / "Đề nghị cập nhật công" đã có sẵn trong menu "Thêm"
+         (thanh điều hướng dưới cùng) - không lặp lại nút tạo mới ở đây, chỉ hiện
+         danh sách trạng thái các đơn/đề nghị đã gửi. -->
+    <div class="settings-section-label">Yêu cầu của tôi</div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Đơn nghỉ phép của tôi</div>
+      ${myLeaves.length === 0 ? `<div class="empty">Chưa có đơn nào.</div>` :
+        myLeaves.slice(0, 5).map((l) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;font-size:13px;">${l.loaiNghi}</div>
+          <span class="pill" style="background:${l.trangThai === "DaDuyet" ? "#E7F8F0" : l.trangThai === "TuChoi" ? "#FBEAEA" : "#FDF3E4"};color:${l.trangThai === "DaDuyet" ? "var(--green)" : l.trangThai === "TuChoi" ? "var(--red)" : "var(--amber)"};">
+            ${l.trangThai === "DaDuyet" ? "Đã duyệt" : l.trangThai === "TuChoi" ? "Từ chối" : "Chờ duyệt"}</span></div>
+          <div class="sub">${l.tuNgay} → ${l.denNgay}</div>
+        </div>`).join("")}
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Đề nghị sửa công của tôi</div>
+      ${myCorrections.length === 0 ? `<div class="empty">Chưa có đề nghị nào.</div>` :
+        myCorrections.slice(0, 5).map((c) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;font-size:13px;">Ngày ${c.ngayCanSua}</div>
+          <span class="pill" style="background:${c.trangThai === "DaDuyet" ? "#E7F8F0" : c.trangThai === "TuChoi" ? "#FBEAEA" : "#FDF3E4"};color:${c.trangThai === "DaDuyet" ? "var(--green)" : c.trangThai === "TuChoi" ? "var(--red)" : "var(--amber)"};">
+            ${c.trangThai === "DaDuyet" ? "Đã duyệt" : c.trangThai === "TuChoi" ? "Từ chối" : "Chờ duyệt"}</span></div>
+          <div class="sub">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"}</div>
+        </div>`).join("")}
+    </div>
+
+    ${admin ? `
+    <!-- ===== QUẢN TRỊ HỆ THỐNG (chỉ Admin) ===== -->
+    <div class="settings-section-label">Quản trị hệ thống</div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Sửa dữ liệu trực tiếp trên hệ thống</div>
+      <div class="sub">Bạn có thể sửa tay trong các bảng dữ liệu <b>CC_NHANVIEN</b>, <b>CC_CHAMCONG</b>, <b>CC_NGHIPHEP</b>, <b>CC_CAUHINH</b> trên hệ thống dữ liệu trung tâm — thay đổi sẽ tự động có hiệu lực trong app (trong vòng 20-30 giây, hoặc bấm "Đồng bộ ngay" bên dưới để thấy ngay lập tức). Không cần thao tác gì thêm.</div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Cấu hình giờ làm</div>
+      <label class="sub" style="display:block;margin-bottom:4px;">Giờ vào chuẩn</label>
+      ${renderCustomTime("cf_gv", state.config.gioChuan)}
+      <label class="sub" style="display:block;margin-bottom:4px;">Giờ ra chuẩn</label>
+      ${renderCustomTime("cf_gr", state.config.gioRaChuan)}
+      <label class="sub" style="display:block;margin-bottom:4px;">Số phút cho phép trễ</label>
+      <input class="input" id="cf_tre" type="text" inputmode="numeric" value="${state.config.soPhutChoPhepTre}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_tre_field" />
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <input type="checkbox" id="cf_gps" ${state.config.batBuocGPS ? "checked" : ""} /> Bắt buộc chấm công trong bán kính công ty
+      </label>
+      <label class="sub" style="display:block;margin-bottom:4px;">Bán kính cho phép (mét)</label>
+      <input class="input" id="cf_bk" type="text" inputmode="numeric" value="${state.config.banKinhGPS}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_bk_field" />
+      <div class="sub" style="margin:-4px 0 10px;">GPS điện thoại luôn có sai số tự nhiên (thường 10-50m, có lúc hơn trong nhà/nhiều tầng). Nên đặt tối thiểu 50-100m để tránh chặn nhầm nhân viên đứng đúng vị trí.</div>
+      <button class="btn btn-outline" id="cf_setloc" style="margin-bottom:8px;">Lấy vị trí hiện tại làm vị trí công ty</button>
+      <div class="sub" id="cf_locinfo" style="margin-bottom:10px;">${state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí công ty"}</div>
+      <button class="btn btn-primary" id="btnSaveConfig">Lưu cấu hình</button>
+    </div>` : ""}
+
+    <!-- ===== ỨNG DỤNG ===== -->
+    <div class="settings-section-label">Ứng dụng</div>
+    ${admin ? `
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Đồng bộ dữ liệu</div>
+      <div class="sub" style="margin-bottom:10px;">Dữ liệu tự động đồng bộ sau mỗi thay đổi. Bấm nút bên dưới để đồng bộ ngay.</div>
+      <button class="btn btn-outline" id="btnSyncNow">Đồng bộ ngay</button>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Làm mới bộ nhớ trên máy</div>
+      <div class="sub" style="margin-bottom:10px;">
+        Dùng khi dữ liệu trên máy này có vẻ SAI LỆCH so với hệ thống dữ liệu trung tâm (VD: vừa xoá thẳng dòng trên hệ thống mà app vẫn hiện lại).
+        Thao tác này xoá dữ liệu tạm trên máy và tải lại đúng y hệt từ hệ thống.
+        <span style="color:var(--red);">Lưu ý: nếu bạn vừa thao tác gì đó (chấm công...) mà CHƯA kịp đồng bộ (đang offline), thay đổi đó sẽ mất.</span>
+      </div>
+      <button class="btn btn-outline" id="btnResetCache">Xoá bộ nhớ đệm & tải lại từ hệ thống</button>
+    </div>` : ""}
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">Phiên bản ứng dụng</div>
+      <div class="sub" style="margin-bottom:10px;">Đang dùng bản: ${APP_VERSION}</div>
+      <button class="btn btn-outline" id="btnCheckUpdate">Kiểm tra cập nhật</button>
+    </div>
+
+    <!-- ===== ĐĂNG XUẤT - LUÔN Ở CUỐI CÙNG, TÁCH RIÊNG, TỰ THÀNH 1 KHỐI ===== -->
+    <div style="height:8px;"></div>
+    <div class="card" style="padding:6px;">
+      <button class="btn btn-red" id="btnLogout" style="background:transparent;font-weight:700;">Đăng xuất</button>
+    </div>
+    <div class="sub" style="text-align:center;margin-top:14px;">Era Chấm Công · Phiên bản ${APP_VERSION}</div>
+  </div>`;
+}
+function bindSettingsEvents(u) {
+  const logoutBtn = document.getElementById("btnLogout");
+  if (logoutBtn) logoutBtn.onclick = doLogout;
+  const syncBtn = document.getElementById("btnSyncNow");
+  if (syncBtn) syncBtn.onclick = async () => { toast("Đang đồng bộ..."); await syncPush(); await syncPull(true); toast("Đã đồng bộ xong."); };
+  const resetBtn = document.getElementById("btnResetCache");
+  if (resetBtn) resetBtn.onclick = () => resetLocalCacheAndReload();
+  const updateBtn = document.getElementById("btnCheckUpdate");
+  if (updateBtn) updateBtn.onclick = async () => {
+    toast("Đang kiểm tra...");
+    const has = await checkForUpdate(false);
+    if (has) applyUpdate();
+  };
+
+  if (document.getElementById("cf_gv_h_btn")) {
+    bindCustomTime("cf_gv");
+    bindCustomTime("cf_gr");
+  }
+
+  const setLocBtn = document.getElementById("cf_setloc");
+  if (setLocBtn) setLocBtn.onclick = async () => {
+    document.getElementById("cf_locinfo").textContent = "Đang xác định vị trí (đợi vài giây để có độ chính xác cao)...";
+    const loc = await getLocation();
+    if (!loc) { toast("Không lấy được vị trí. Kiểm tra quyền định vị."); document.getElementById("cf_locinfo").textContent = state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí công ty"; return; }
+    state.config.viTriCongTy = { lat: loc.lat, lng: loc.lng };
+    const accTxt = loc.accuracy ? ` (độ chính xác ~${Math.round(loc.accuracy)}m)` : "";
+    document.getElementById("cf_locinfo").textContent = `Đã đặt: ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}${accTxt}`;
+    toast("Đã lấy vị trí hiện tại. Nhớ bấm Lưu cấu hình để áp dụng.");
+  };
+  const gpsCheckbox = document.getElementById("cf_gps");
+  if (gpsCheckbox) gpsCheckbox.onchange = () => {
+    if (gpsCheckbox.checked && (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null)) {
+      toast("Cần đặt vị trí công ty trước khi bật bắt buộc GPS.");
+      gpsCheckbox.checked = false;
+    }
+  };
+  const saveCfg = document.getElementById("btnSaveConfig");
+  if (saveCfg) saveCfg.onclick = () => {
+    if (document.getElementById("cf_gps").checked && (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null)) {
+      toast("Cần đặt vị trí công ty (bấm nút bên trên) trước khi bật bắt buộc GPS.");
+      return;
+    }
+    state.config = {
+      gioChuan: getCustomTimeValue("cf_gv"),
+      gioRaChuan: getCustomTimeValue("cf_gr"),
+      soPhutChoPhepTre: Number(document.getElementById("cf_tre").value) || 0,
+      batBuocGPS: document.getElementById("cf_gps").checked,
+      banKinhGPS: Number(document.getElementById("cf_bk").value) || 300,
+      viTriCongTy: state.config.viTriCongTy,
+      updatedAt: nowMs(),
+    };
+    saveLocal(); scheduleSync();
+    toast("Đã lưu cấu hình.");
+  };
+}
+
+// =====================================================================
+// GẮN SỰ KIỆN THEO TAB
+// =====================================================================
+function bindScreenEvents(tab, u) {
+  if (tab === "checkin") bindScreenEventsCheckin(u);
+  if (tab === "employees") bindEmployeesEvents(u);
+  if (tab === "history") bindHistoryEvents(u);
+  if (tab === "report") bindReportEvents(u);
+  if (tab === "settings") bindSettingsEvents(u);
+}
+
+// =====================================================================
+// KIỂM TRA CẬP NHẬT PHIÊN BẢN MỚI
+// =====================================================================
+let updateAvailable = false;
+
+async function checkForUpdate(silent) {
+  try {
+    const res = await fetch(window.location.pathname + "?_check=" + Date.now(), { cache: "no-store" });
+    const html = await res.text();
+    const match = html.match(/const APP_VERSION = "([^"]+)"/);
+    if (match && match[1] !== APP_VERSION) {
+      updateAvailable = true;
+      // Kiểm tra ngầm (tự động) phát hiện bản mới -> tự áp dụng luôn, KHÔNG cần bấm,
+      // NHƯNG chỉ khi không có popup/form nào đang mở (tránh mất dữ liệu đang gõ dở).
+      // Nếu đang có form mở, hiện banner để người dùng tự bấm khi tiện.
+      if (silent && !isOverlayOpen()) {
+        applyUpdate();
+      } else {
+        showUpdateBanner();
+      }
+      return true;
+    }
+    if (!silent) toast("Bạn đang dùng bản mới nhất.");
+    return false;
+  } catch (e) {
+    if (!silent) toast("Không kiểm tra được cập nhật (kiểm tra kết nối mạng).");
+    return false;
+  }
+}
+
+function showUpdateBanner() {
+  if (document.getElementById("updateBanner")) return;
+  const el = document.createElement("div");
+  el.id = "updateBanner";
+  el.style.cssText = "position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;" +
+    "background:var(--amber);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;" +
+    "text-align:center;font-size:13px;font-weight:600;z-index:300;cursor:pointer;";
+  el.textContent = "Có bản cập nhật mới — Bấm để cập nhật ngay";
+  el.onclick = applyUpdate;
+  document.body.appendChild(el);
+}
+
+function applyUpdate() {
+  window.location.href = window.location.pathname + "?v=" + Date.now();
+}
+
+// =====================================================================
+// KHỞI ĐỘNG
+// =====================================================================
+async function bootstrap() {
+  if (activeEmployees().length === 0) {
+    try {
+      const res = await apiCall("GET", { action: "checkInit" });
+      serverHasEmployees = res.success ? res.initialized : false;
+    } catch (e) {
+      serverHasEmployees = null; // không có mạng - chưa xác định được, ưu tiên hiện Đăng nhập thay vì Thiết lập
+    }
+  }
+  renderApp();
+  if (session) {
+    syncPull(true);
+    setInterval(() => syncPull(true), 30000);
+  }
+  setTimeout(() => checkForUpdate(true), 3000);
+  setInterval(() => checkForUpdate(true), 5 * 60 * 1000);
+}
+bootstrap();
+
+// =====================================================================
+// CHẶN NÚT BACK CỨNG CỦA ĐIỆN THOẠI - không cho trình duyệt tự xử lý
+// (vốn sẽ "lùi trang" hoặc thoát app đột ngột). Thay vào đó, nút Back sẽ:
+// 1. Đang mở popup/form nào đó -> đóng lại
+// 2. Đang không ở tab Chấm công -> quay về tab Chấm công
+// 3. Đã ở tab Chấm công, không có gì mở -> hỏi "Bấm lần nữa để thoát"
+// =====================================================================
+function isOverlayOpen() {
+  const el = document.getElementById("overlay");
+  return !!(el && el.classList.contains("show"));
+}
+
+try {
+  history.pushState({ appGuard: true }, "");
+  window.addEventListener("popstate", () => {
+    if (isOverlayOpen()) {
+      closeSheet();
+      history.pushState({ appGuard: true }, "");
+      return;
+    }
+    if (session && currentTab !== "checkin") {
+      currentTab = "checkin";
+      renderApp();
+      history.pushState({ appGuard: true }, "");
+      return;
+    }
+    const now = Date.now();
+    if (window._lastBackPress && now - window._lastBackPress < 2000) {
+      return; // bấm lần 2 trong 2 giây -> để trình duyệt/hệ thống thoát app thật
+    }
+    window._lastBackPress = now;
+    toast("Nhấn Back lần nữa để thoát ứng dụng.");
+    history.pushState({ appGuard: true }, "");
+  });
+} catch (e) {
+  // trình duyệt không hỗ trợ History API đầy đủ - bỏ qua, không chặn được cũng không lỗi
+}
+</script>
+</body>
+</html>
