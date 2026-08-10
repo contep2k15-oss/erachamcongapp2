@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-27";
+const APP_VERSION = "20260808-28";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -582,6 +582,16 @@ function hasPerm(u, key) {
 }
 function canSeeEmployeesTab(u) { return isAdmin(u) || hasPerm(u, "quanLyNhanVien"); }
 function canSeeReportTab(u) { return isAdmin(u) || hasPerm(u, "xemBaoCao") || hasPerm(u, "duyetNghiPhep") || hasPerm(u, "duyetDeNghiCong"); }
+
+// Phân cấp duyệt: Nhân viên thường -> Quản lý (có quyền) hoặc Admin đều duyệt được.
+// Quản lý -> CHỈ Admin mới duyệt được (Quản lý không duyệt được yêu cầu của Quản lý khác).
+function canApproveRequest(approver, submitterEmployee, permKey) {
+  if (isAdmin(approver)) return true; // Admin duyệt được mọi cấp
+  if (!hasPerm(approver, permKey)) return false; // chưa có quyền duyệt cơ bản
+  const submitterRole = submitterEmployee ? submitterEmployee.vaiTro : "NhanVien";
+  // Người gửi là Quản lý (hoặc Admin) -> chỉ Admin mới duyệt được, Quản lý khác không được phép
+  return submitterRole !== "QuanLy" && submitterRole !== "Admin";
+}
 
 // =====================================================================
 // SYNC — GỘP DỮ LIỆU THEO updatedAt, KHÔNG GHI ĐÈ (client-side merge)
@@ -1793,14 +1803,15 @@ function renderReport(u) {
       ${pendingLeaves.length === 0 ? `<div class="empty">Không có đơn chờ duyệt.</div>` :
         pendingLeaves.map((l) => {
           const emp = state.employees.find((e) => e.id === l.employeeId);
-          const canApprove = isAdmin(u) || hasPerm(u, "duyetNghiPhep");
+          const canApprove = canApproveRequest(u, emp, "duyetNghiPhep");
+          const isHigherLevel = emp && (emp.vaiTro === "QuanLy" || emp.vaiTro === "Admin");
           return `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
-            <div style="font-weight:600;">${emp ? emp.hoTen : l.employeeId} — ${l.loaiNghi}</div>
+            <div style="font-weight:600;">${emp ? emp.hoTen : l.employeeId} ${isHigherLevel ? `<span class="pill" style="background:#E9F1FF;color:var(--primary);margin-left:4px;">${emp.vaiTro === "Admin" ? "Admin" : "Quản lý"}</span>` : ""} — ${l.loaiNghi}</div>
             <div class="sub" style="margin:4px 0;">${l.tuNgay} → ${l.denNgay} · ${l.lyDo || ""}</div>
             ${canApprove ? `<div class="row">
               <button class="btn btn-green" data-approve="${l.id}" style="padding:8px 0;font-size:12.5px;">Duyệt</button>
               <button class="btn btn-red" data-reject="${l.id}" style="padding:8px 0;font-size:12.5px;">Từ chối</button>
-            </div>` : `<div class="sub" style="font-style:italic;">Bạn không có quyền duyệt đơn — cần Admin cấp quyền.</div>`}
+            </div>` : `<div class="sub" style="font-style:italic;">${isHigherLevel ? "Yêu cầu của Quản lý/Admin — chỉ Admin mới duyệt được." : "Bạn không có quyền duyệt đơn — cần Admin cấp quyền."}</div>`}
           </div>`;
         }).join("")}
     </div>
@@ -1813,16 +1824,17 @@ function renderReport(u) {
       ${pendingCorrections.length === 0 ? `<div class="empty">Không có đề nghị chờ duyệt.</div>` :
         pendingCorrections.map((c) => {
           const emp = state.employees.find((e) => e.id === c.employeeId);
-          const canApprove = isAdmin(u) || hasPerm(u, "duyetDeNghiCong");
+          const canApprove = canApproveRequest(u, emp, "duyetDeNghiCong");
+          const isHigherLevel = emp && (emp.vaiTro === "QuanLy" || emp.vaiTro === "Admin");
           return `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
-            <div style="font-weight:600;">${emp ? emp.hoTen : c.employeeId} — ngày ${c.ngayCanSua}</div>
+            <div style="font-weight:600;">${emp ? emp.hoTen : c.employeeId} ${isHigherLevel ? `<span class="pill" style="background:#E9F1FF;color:var(--primary);margin-left:4px;">${emp.vaiTro === "Admin" ? "Admin" : "Quản lý"}</span>` : ""} — ngày ${c.ngayCanSua}</div>
             <div class="sub" style="margin:4px 0;">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"}</div>
             <div class="sub" style="margin-bottom:6px;">Lý do: ${c.lyDo || ""}</div>
             ${c.anhMinhChung ? `<img src="${c.anhMinhChung}" style="max-width:140px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px;display:block;" />` : ""}
             ${canApprove ? `<div class="row">
               <button class="btn btn-green" data-approve-cor="${c.id}" style="padding:8px 0;font-size:12.5px;">Duyệt</button>
               <button class="btn btn-red" data-reject-cor="${c.id}" style="padding:8px 0;font-size:12.5px;">Từ chối</button>
-            </div>` : `<div class="sub" style="font-style:italic;">Bạn không có quyền duyệt — cần Admin cấp quyền.</div>`}
+            </div>` : `<div class="sub" style="font-style:italic;">${isHigherLevel ? "Yêu cầu của Quản lý/Admin — chỉ Admin mới duyệt được." : "Bạn không có quyền duyệt — cần Admin cấp quyền."}</div>`}
           </div>`;
         }).join("")}
     </div>
@@ -1915,6 +1927,8 @@ function openEmployeeMonthDetail(employeeId, year, month) {
 function decideLeave(id, trangThai, u) {
   const l = state.leaveRequests.find((x) => x.id === id);
   if (!l) return;
+  const emp = state.employees.find((e) => e.id === l.employeeId);
+  if (!canApproveRequest(u, emp, "duyetNghiPhep")) { toast("Bạn không có quyền duyệt đơn này."); return; }
   l.trangThai = trangThai; l.nguoiDuyet = u.id; l.updatedAt = nowMs();
   saveLocal(); renderApp(); scheduleSync();
   toast(trangThai === "DaDuyet" ? "Đã duyệt đơn." : "Đã từ chối đơn.");
@@ -1925,6 +1939,8 @@ function decideLeave(id, trangThai, u) {
 function decideCorrection(id, trangThai, u) {
   const c = state.correctionRequests.find((x) => x.id === id);
   if (!c) return;
+  const emp = state.employees.find((e) => e.id === c.employeeId);
+  if (!canApproveRequest(u, emp, "duyetDeNghiCong")) { toast("Bạn không có quyền duyệt đề nghị này."); return; }
   c.trangThai = trangThai; c.nguoiDuyet = u.id; c.updatedAt = nowMs();
 
   if (trangThai === "DaDuyet") {
