@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-24";
+const APP_VERSION = "20260808-27";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -717,14 +717,26 @@ async function resetLocalCacheAndReload() {
 // GPS
 // =====================================================================
 function getLocation() {
-  return new Promise((resolve) => {
+  // Thử lần 1: độ chính xác cao (GPS vệ tinh thật) - tốt nhất nhưng có thể chậm/thất bại trong nhà
+  const tryHighAccuracy = () => new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
       () => resolve(null),
-      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+      { timeout: 8000, enableHighAccuracy: true, maximumAge: 0 }
     );
   });
+  // Thử lần 2 (dự phòng): định vị theo WiFi/cột sóng - kém chính xác hơn nhưng
+  // nhanh và hoạt động tốt hơn trong nhà/nơi tín hiệu GPS yếu.
+  const tryLowAccuracy = () => new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      () => resolve(null),
+      { timeout: 12000, enableHighAccuracy: false, maximumAge: 30000 }
+    );
+  });
+  return tryHighAccuracy().then((loc) => loc || tryLowAccuracy());
 }
 function distMeters(a, b) {
   if (!a || !b || a.lat == null || b.lat == null) return null;
@@ -1669,7 +1681,24 @@ function openEditRecordForm(u, recordId) {
 // =====================================================================
 // SCREEN: BÁO CÁO (chỉ QuanLy/Admin)
 // =====================================================================
+let reportMonthState = { year: null, month: null };
+function ensureReportMonthState() {
+  if (reportMonthState.year == null) {
+    const p = nowVNParts();
+    reportMonthState.year = Number(p.year);
+    reportMonthState.month = Number(p.month);
+  }
+}
+
 function renderReport(u) {
+  ensureReportMonthState();
+  // Quyền XEM BÁO CÁO TỔNG HỢP (tổng quan công ty, chi tiết từng người) phải do
+  // Admin cấp riêng ("xemBaoCao") - KHÔNG tự động có chỉ vì được quyền duyệt đơn.
+  // Quyền duyệt đơn nghỉ phép / đề nghị sửa công chỉ cho thấy đúng phần đơn cần duyệt của họ.
+  const canViewFullReport = isAdmin(u) || hasPerm(u, "xemBaoCao");
+  const canViewLeaveSection = isAdmin(u) || hasPerm(u, "duyetNghiPhep");
+  const canViewCorrectionSection = isAdmin(u) || hasPerm(u, "duyetDeNghiCong");
+
   const records = state.records.filter((r) => !r.deleted);
   const byEmp = {};
   records.forEach((r) => {
@@ -1682,29 +1711,82 @@ function renderReport(u) {
     const emp = state.employees.find((e) => e.id === id);
     return { id, hoTen: emp ? emp.hoTen : id, phongBan: emp ? emp.phongBan : "", ...v };
   }).sort((a, b) => b.tongGio - a.tongGio);
-  const totalHours = rows.reduce((s, r) => s + r.tongGio, 0);
 
   const pendingLeaves = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet");
   const pendingCorrections = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
   const recentAudit = [...state.auditLog].filter((a) => !a.deleted).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 15);
 
+  // Báo cáo tổng hợp THÁNG cho từng nhân viên - tổng công, làm thêm, trễ/sớm, ngày nghỉ
+  const monthRows = activeEmployees().map((emp) => {
+    const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
+    return { emp, ...stats };
+  }).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
+
+  // Gộp thành số liệu cấp CÔNG TY (tổng của tất cả nhân viên) để Quản lý/Admin nắm nhanh
+  const companyStats = monthRows.reduce((acc, r) => {
+    acc.tongCong += r.tongCong;
+    acc.tongGioLamThem += r.tongGioLamThem;
+    acc.tongTreSom += r.soLanTreSom;
+    acc.tongNgayNghi += r.soNgayNghi;
+    if (r.tongCong > 0) acc.tongNhanVienCoCong += 1;
+    return acc;
+  }, { tongCong: 0, tongGioLamThem: 0, tongTreSom: 0, tongNgayNghi: 0, tongNhanVienCoCong: 0 });
+
   return `
   <div class="header"><div class="title">Báo cáo</div></div>
   <div class="pad">
+    ${!canViewFullReport ? `<div class="sub" style="margin-bottom:12px;">Bạn chỉ có quyền xem/duyệt đơn được giao bên dưới. Liên hệ Admin nếu cần xem báo cáo tổng hợp đầy đủ.</div>` : ""}
+    ${canViewFullReport ? `    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
+        <div style="font-weight:700;">Tổng quan — Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
+        <button type="button" class="btn btn-outline" id="rp_next" style="width:auto;padding:8px 14px;">›</button>
+      </div>
+    </div>
+
+    <!-- TỔNG QUAN CẤP CÔNG TY - dành cho Quản lý/Admin nắm nhanh tình hình chung -->
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${companyStats.tongNhanVienCoCong}/${monthRows.length}</div><div class="sub" style="font-size:11px;">NV có công / tổng NV</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongCong}</div><div class="sub" style="font-size:11px;">Tổng công cả tháng</div></div>
+    </div>
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:11px;">Tổng giờ làm thêm</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${companyStats.tongTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${companyStats.tongTreSom}</div><div class="sub" style="font-size:11px;">Lượt đi trễ/về sớm</div></div>
+    </div>
     <div class="row" style="margin-bottom:12px;">
-      <div class="card" style="flex:1;margin-bottom:0;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub">Nhân viên có công</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;"><div style="font-size:20px;font-weight:800;color:var(--green);">${totalHours.toFixed(1)}</div><div class="sub">Tổng giờ công</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--red);">${companyStats.tongNgayNghi}</div><div class="sub" style="font-size:11px;">Tổng ngày nghỉ</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${(pendingLeaves.length + pendingCorrections.length) > 0 ? "var(--amber)" : "var(--ink)"};">${pendingLeaves.length + pendingCorrections.length}</div><div class="sub" style="font-size:11px;">Đơn/đề nghị chờ duyệt</div></div>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Chi tiết theo nhân viên</div>
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Chi tiết theo nhân viên (bấm để xem lịch sử đơn/đề nghị)</div>
+      ${monthRows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+        monthRows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;">${r.emp.hoTen}</div>
+            <div class="sub">${r.emp.phongBan || ""} · ${r.tongCong} công · ${r.tongGioLamThem.toFixed(1)}h thêm
+              ${r.soLanTreSom > 0 ? ` · <span style="color:var(--amber);">${r.soLanTreSom} lần trễ/sớm</span>` : ""}
+              ${r.soNgayNghi > 0 ? ` · <span style="color:var(--red);">${r.soNgayNghi} ngày nghỉ</span>` : ""}
+            </div>
+          </div>
+          <span class="sub">›</span>
+        </div>`).join("")}
+    </div>
+    <div class="sub" style="text-align:center;margin-top:10px;">Bên dưới là số liệu toàn thời gian (không giới hạn theo tháng) để tham khảo thêm.</div>
+    <div style="height:4px;"></div>
+
+    <div style="height:12px;"></div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Toàn thời gian (không theo tháng)</div>
       ${rows.length === 0 ? `<div class="empty">Chưa có dữ liệu.</div>` :
         rows.map((r) => `<div class="list-item" style="padding:12px 16px;">
           <div style="flex:1;"><div style="font-weight:600;">${r.hoTen}</div><div class="sub">${r.phongBan} · ${r.soNgay} ngày công${r.soNgayTre > 0 ? ` · <span style="color:var(--amber);">${r.soNgayTre} lần trễ</span>` : ""}</div></div>
           <div style="font-weight:700;color:var(--primary);">${r.tongGio.toFixed(1)}h</div>
         </div>`).join("")}
     </div>
+    ` : ""}
 
+    ${canViewLeaveSection ? `
     <div style="height:12px;"></div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Đơn nghỉ phép chờ duyệt (${pendingLeaves.length})</div>
@@ -1722,7 +1804,9 @@ function renderReport(u) {
           </div>`;
         }).join("")}
     </div>
+    ` : ""}
 
+    ${canViewCorrectionSection ? `
     <div style="height:12px;"></div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Đề nghị sửa công chờ duyệt (${pendingCorrections.length})</div>
@@ -1742,8 +1826,9 @@ function renderReport(u) {
           </div>`;
         }).join("")}
     </div>
+    ` : ""}
 
-    ${(isAdmin(u) || hasPerm(u, "suaChamCong") || hasPerm(u, "duyetDeNghiCong")) ? `
+    ${(canViewFullReport || hasPerm(u, "suaChamCong")) ? `
     <div style="height:12px;"></div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Lịch sử thay đổi công gần đây</div>
@@ -1765,6 +1850,67 @@ function bindReportEvents(u) {
   document.querySelectorAll("[data-reject]").forEach((b) => b.onclick = () => decideLeave(b.dataset.reject, "TuChoi", u));
   document.querySelectorAll("[data-approve-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.approveCor, "DaDuyet", u));
   document.querySelectorAll("[data-reject-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.rejectCor, "TuChoi", u));
+
+  const prevBtn = document.getElementById("rp_prev");
+  if (prevBtn) prevBtn.onclick = () => {
+    reportMonthState.month -= 1;
+    if (reportMonthState.month < 1) { reportMonthState.month = 12; reportMonthState.year -= 1; }
+    renderApp();
+  };
+  const nextBtn = document.getElementById("rp_next");
+  if (nextBtn) nextBtn.onclick = () => {
+    reportMonthState.month += 1;
+    if (reportMonthState.month > 12) { reportMonthState.month = 1; reportMonthState.year += 1; }
+    renderApp();
+  };
+  document.querySelectorAll("[data-emp-detail]").forEach((el) => {
+    el.onclick = () => openEmployeeMonthDetail(el.dataset.empDetail, reportMonthState.year, reportMonthState.month);
+  });
+}
+function openEmployeeMonthDetail(employeeId, year, month) {
+  const emp = state.employees.find((e) => e.id === employeeId);
+  const stats = computeMonthStats(employeeId, year, month);
+  const myLeaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === employeeId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const myCorrections = state.correctionRequests.filter((c) => !c.deleted && c.employeeId === employeeId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  const statusPillHtml = (trangThai) => {
+    const map = { DaDuyet: ["Đã duyệt", "#E7F8F0", "var(--green)"], TuChoi: ["Từ chối", "#FBEAEA", "var(--red)"], ChoDuyet: ["Chờ duyệt", "#FDF3E4", "var(--amber)"] };
+    const [label, bg, color] = map[trangThai] || [trangThai, "#EEE", "#666"];
+    return `<span class="pill" style="background:${bg};color:${color};">${label}</span>`;
+  };
+
+  openSheet(`
+    <div class="sheet-title">${emp ? emp.hoTen : employeeId} — Tháng ${month}/${year}</div>
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:10px;"><div style="font-size:16px;font-weight:800;color:var(--primary);">${stats.tongCong}</div><div class="sub" style="font-size:10.5px;">Công</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:10px;"><div style="font-size:16px;font-weight:800;color:var(--green);">${stats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:10.5px;">Thêm giờ</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:10px;"><div style="font-size:16px;font-weight:800;color:var(--amber);">${stats.soLanTreSom}</div><div class="sub" style="font-size:10.5px;">Trễ/sớm</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:10px;"><div style="font-size:16px;font-weight:800;color:var(--red);">${stats.soNgayNghi}</div><div class="sub" style="font-size:10.5px;">Ngày nghỉ</div></div>
+    </div>
+
+    <div style="font-weight:700;margin:14px 0 8px;">Lịch sử đơn nghỉ phép (${myLeaves.length})</div>
+    <div style="max-height:180px;overflow-y:auto;">
+      ${myLeaves.length === 0 ? `<div class="empty" style="padding:10px 0;">Chưa có đơn nào.</div>` :
+        myLeaves.map((l) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;font-size:13px;">${l.loaiNghi}</span>${statusPillHtml(l.trangThai)}</div>
+          <div class="sub">${l.tuNgay} → ${l.denNgay} · ${l.lyDo || ""}</div>
+        </div>`).join("")}
+    </div>
+
+    <div style="font-weight:700;margin:14px 0 8px;">Lịch sử đề nghị sửa công (${myCorrections.length})</div>
+    <div style="max-height:180px;overflow-y:auto;">
+      ${myCorrections.length === 0 ? `<div class="empty" style="padding:10px 0;">Chưa có đề nghị nào.</div>` :
+        myCorrections.map((c) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;font-size:13px;">Ngày ${c.ngayCanSua}</span>${statusPillHtml(c.trangThai)}</div>
+          <div class="sub">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"} · ${c.lyDo || ""}</div>
+        </div>`).join("")}
+    </div>
+
+    <button class="btn btn-outline" id="empd_close" style="margin-top:14px;">Đóng</button>
+  `);
+  document.getElementById("empd_close").onclick = closeSheet;
 }
 function decideLeave(id, trangThai, u) {
   const l = state.leaveRequests.find((x) => x.id === id);
