@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-30";
+const APP_VERSION = "20260808-31";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1724,7 +1724,6 @@ function renderReport(u) {
 
   const pendingLeaves = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet");
   const pendingCorrections = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
-  const recentAudit = [...state.auditLog].filter((a) => !a.deleted).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 15);
 
   // Báo cáo tổng hợp THÁNG cho từng nhân viên - tổng công, làm thêm, trễ/sớm, ngày nghỉ
   const monthRows = activeEmployees().map((emp) => {
@@ -1839,22 +1838,6 @@ function renderReport(u) {
         }).join("")}
     </div>
     ` : ""}
-
-    ${(canViewFullReport || hasPerm(u, "suaChamCong")) ? `
-    <div style="height:12px;"></div>
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Lịch sử thay đổi công gần đây</div>
-      ${recentAudit.length === 0 ? `<div class="empty">Chưa có thay đổi nào.</div>` :
-        recentAudit.map((a) => {
-          const emp = state.employees.find((e) => e.id === a.employeeId);
-          const nguoi = state.employees.find((e) => e.id === a.nguoiThucHien);
-          return `<div style="padding:10px 16px;border-bottom:1px solid var(--line);font-size:12.5px;">
-            <div style="font-weight:600;">${emp ? emp.hoTen : a.employeeId} — ngày ${a.ngay}</div>
-            <div class="sub">${a.gioVaoCu || "—"}→${a.gioRaCu || "—"} ⟶ <span style="color:var(--primary);font-weight:600;">${a.gioVaoMoi || "—"}→${a.gioRaMoi || "—"}</span></div>
-            <div class="sub">Bởi: ${nguoi ? nguoi.hoTen : a.nguoiThucHien} · ${a.loaiThayDoi === "DuyetDeNghi" ? "Duyệt đề nghị" : "Sửa trực tiếp"}${a.lyDo ? " · " + a.lyDo : ""}</div>
-          </div>`;
-        }).join("")}
-    </div>` : ""}
   </div>`;
 }
 function bindReportEvents(u) {
