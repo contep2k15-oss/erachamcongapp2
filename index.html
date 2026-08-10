@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-31";
+const APP_VERSION = "20260808-32";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1689,7 +1689,8 @@ function openEditRecordForm(u, recordId) {
 }
 
 // =====================================================================
-// SCREEN: BÁO CÁO (chỉ QuanLy/Admin)
+// SCREEN: BÁO CÁO (chỉ QuanLy/Admin) - chia 3 tab con: Tổng quan / Theo
+// nhân viên / Cần duyệt, giống cấu trúc các app HRM chuyên nghiệp (MISA...)
 // =====================================================================
 let reportMonthState = { year: null, month: null };
 function ensureReportMonthState() {
@@ -1699,6 +1700,8 @@ function ensureReportMonthState() {
     reportMonthState.month = Number(p.month);
   }
 }
+let reportViewTab = null; // "tongquan" | "theonhanvien" | "canduyet" - tự chọn tab đầu tiên khả dụng
+let reportEmpViewMode = "thang"; // "thang" | "toanthoigian" - áp dụng riêng cho tab Theo nhân viên
 
 function renderReport(u) {
   ensureReportMonthState();
@@ -1708,6 +1711,84 @@ function renderReport(u) {
   const canViewFullReport = isAdmin(u) || hasPerm(u, "xemBaoCao");
   const canViewLeaveSection = isAdmin(u) || hasPerm(u, "duyetNghiPhep");
   const canViewCorrectionSection = isAdmin(u) || hasPerm(u, "duyetDeNghiCong");
+  const canViewCanDuyetTab = canViewLeaveSection || canViewCorrectionSection;
+
+  const availableTabs = [
+    ...(canViewFullReport ? [{ key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }] : []),
+    ...(canViewCanDuyetTab ? [{ key: "canduyet", label: "Cần duyệt" }] : []),
+  ];
+  if (!reportViewTab || !availableTabs.find((t) => t.key === reportViewTab)) {
+    reportViewTab = availableTabs.length > 0 ? availableTabs[0].key : null;
+  }
+
+  const pendingLeaves = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet");
+  const pendingCorrections = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
+  const soLuongCanDuyet = (canViewLeaveSection ? pendingLeaves.length : 0) + (canViewCorrectionSection ? pendingCorrections.length : 0);
+
+  let bodyHtml = "";
+  if (reportViewTab === "tongquan") bodyHtml = renderReportTongQuan();
+  else if (reportViewTab === "theonhanvien") bodyHtml = renderReportTheoNhanVien();
+  else if (reportViewTab === "canduyet") bodyHtml = renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeaveSection, canViewCorrectionSection);
+  else bodyHtml = `<div class="empty">Bạn chưa được cấp quyền xem báo cáo hoặc duyệt đơn nào. Liên hệ Admin để được cấp quyền.</div>`;
+
+  return `
+  <div class="header"><div class="title">Báo cáo</div></div>
+  <div class="pad">
+    ${availableTabs.length > 1 ? `
+    <div class="tabs" style="margin-bottom:12px;">
+      ${availableTabs.map((t) => `<button type="button" data-report-tab="${t.key}" class="${reportViewTab === t.key ? "active" : ""}">${t.label}${t.key === "canduyet" && soLuongCanDuyet > 0 ? ` (${soLuongCanDuyet})` : ""}</button>`).join("")}
+    </div>` : ""}
+    ${bodyHtml}
+  </div>`;
+}
+
+// ---- TAB 1: TỔNG QUAN - số liệu cấp công ty theo tháng ----
+function renderReportTongQuan() {
+  const monthRows = activeEmployees().map((emp) => {
+    const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
+    return { emp, ...stats };
+  });
+  const companyStats = monthRows.reduce((acc, r) => {
+    acc.tongCong += r.tongCong;
+    acc.tongGioLamThem += r.tongGioLamThem;
+    acc.tongTreSom += r.soLanTreSom;
+    acc.tongNgayNghi += r.soNgayNghi;
+    if (r.tongCong > 0) acc.tongNhanVienCoCong += 1;
+    return acc;
+  }, { tongCong: 0, tongGioLamThem: 0, tongTreSom: 0, tongNgayNghi: 0, tongNhanVienCoCong: 0 });
+  const pendingCount = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet").length +
+    state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet").length;
+
+  return `
+    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
+        <div style="font-weight:700;">Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
+        <button type="button" class="btn btn-outline" id="rp_next" style="width:auto;padding:8px 14px;">›</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" data-company-stat="coCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${companyStats.tongNhanVienCoCong}/${monthRows.length}</div><div class="sub" style="font-size:11px;">NV có công / tổng NV ›</div></div>
+      <div class="card" data-company-stat="tongCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongCong}</div><div class="sub" style="font-size:11px;">Tổng công cả tháng ›</div></div>
+    </div>
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" data-company-stat="gioLamThem" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:11px;">Tổng giờ làm thêm ›</div></div>
+      <div class="card" data-company-stat="treSom" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${companyStats.tongTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${companyStats.tongTreSom}</div><div class="sub" style="font-size:11px;">Lượt đi trễ/về sớm ›</div></div>
+    </div>
+    <div class="row" style="margin-bottom:0;">
+      <div class="card" data-company-stat="ngayNghi" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--red);">${companyStats.tongNgayNghi}</div><div class="sub" style="font-size:11px;">Tổng ngày nghỉ ›</div></div>
+      <div class="card" data-company-stat="pending" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${pendingCount > 0 ? "var(--amber)" : "var(--ink)"};">${pendingCount}</div><div class="sub" style="font-size:11px;">Đơn/đề nghị chờ duyệt ›</div></div>
+    </div>
+  `;
+}
+
+// ---- TAB 2: THEO NHÂN VIÊN - danh sách chi tiết, chọn xem theo tháng hoặc toàn thời gian ----
+function renderReportTheoNhanVien() {
+  const monthRows = activeEmployees().map((emp) => {
+    const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
+    return { emp, ...stats };
+  }).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
 
   const records = state.records.filter((r) => !r.deleted);
   const byEmp = {};
@@ -1717,59 +1798,29 @@ function renderReport(u) {
     if (r.gioVao) byEmp[r.employeeId].soNgay += 1;
     if (r.gioVao && isLate(r.gioVao)) byEmp[r.employeeId].soNgayTre += 1;
   });
-  const rows = Object.entries(byEmp).map(([id, v]) => {
+  const allTimeRows = Object.entries(byEmp).map(([id, v]) => {
     const emp = state.employees.find((e) => e.id === id);
     return { id, hoTen: emp ? emp.hoTen : id, phongBan: emp ? emp.phongBan : "", ...v };
   }).sort((a, b) => b.tongGio - a.tongGio);
 
-  const pendingLeaves = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet");
-  const pendingCorrections = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
-
-  // Báo cáo tổng hợp THÁNG cho từng nhân viên - tổng công, làm thêm, trễ/sớm, ngày nghỉ
-  const monthRows = activeEmployees().map((emp) => {
-    const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
-    return { emp, ...stats };
-  }).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
-
-  // Gộp thành số liệu cấp CÔNG TY (tổng của tất cả nhân viên) để Quản lý/Admin nắm nhanh
-  const companyStats = monthRows.reduce((acc, r) => {
-    acc.tongCong += r.tongCong;
-    acc.tongGioLamThem += r.tongGioLamThem;
-    acc.tongTreSom += r.soLanTreSom;
-    acc.tongNgayNghi += r.soNgayNghi;
-    if (r.tongCong > 0) acc.tongNhanVienCoCong += 1;
-    return acc;
-  }, { tongCong: 0, tongGioLamThem: 0, tongTreSom: 0, tongNgayNghi: 0, tongNhanVienCoCong: 0 });
-
   return `
-  <div class="header"><div class="title">Báo cáo</div></div>
-  <div class="pad">
-    ${!canViewFullReport ? `<div class="sub" style="margin-bottom:12px;">Bạn chỉ có quyền xem/duyệt đơn được giao bên dưới. Liên hệ Admin nếu cần xem báo cáo tổng hợp đầy đủ.</div>` : ""}
-    ${canViewFullReport ? `    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
+    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
+      <div class="tabs" style="padding-bottom:0;margin-bottom:${reportEmpViewMode === "thang" ? "10px" : "0"};">
+        <button type="button" data-emp-view-mode="thang" class="${reportEmpViewMode === "thang" ? "active" : ""}">Theo tháng</button>
+        <button type="button" data-emp-view-mode="toanthoigian" class="${reportEmpViewMode === "toanthoigian" ? "active" : ""}">Toàn thời gian</button>
+      </div>
+      ${reportEmpViewMode === "thang" ? `
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
-        <div style="font-weight:700;">Tổng quan — Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
+        <div style="font-weight:700;">Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
         <button type="button" class="btn btn-outline" id="rp_next" style="width:auto;padding:8px 14px;">›</button>
-      </div>
-    </div>
-
-    <!-- TỔNG QUAN CẤP CÔNG TY - dành cho Quản lý/Admin nắm nhanh tình hình chung, bấm từng ô để xem chi tiết -->
-    <div class="row" style="margin-bottom:10px;">
-      <div class="card" data-company-stat="coCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${companyStats.tongNhanVienCoCong}/${monthRows.length}</div><div class="sub" style="font-size:11px;">NV có công / tổng NV ›</div></div>
-      <div class="card" data-company-stat="tongCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongCong}</div><div class="sub" style="font-size:11px;">Tổng công cả tháng ›</div></div>
-    </div>
-    <div class="row" style="margin-bottom:10px;">
-      <div class="card" data-company-stat="gioLamThem" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:11px;">Tổng giờ làm thêm ›</div></div>
-      <div class="card" data-company-stat="treSom" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${companyStats.tongTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${companyStats.tongTreSom}</div><div class="sub" style="font-size:11px;">Lượt đi trễ/về sớm ›</div></div>
-    </div>
-    <div class="row" style="margin-bottom:12px;">
-      <div class="card" data-company-stat="ngayNghi" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--red);">${companyStats.tongNgayNghi}</div><div class="sub" style="font-size:11px;">Tổng ngày nghỉ ›</div></div>
-      <div class="card" data-company-stat="pending" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${(pendingLeaves.length + pendingCorrections.length) > 0 ? "var(--amber)" : "var(--ink)"};">${pendingLeaves.length + pendingCorrections.length}</div><div class="sub" style="font-size:11px;">Đơn/đề nghị chờ duyệt ›</div></div>
+      </div>` : ""}
     </div>
 
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Chi tiết theo nhân viên (bấm để xem lịch sử đơn/đề nghị)</div>
-      ${monthRows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Bấm vào 1 người để xem chi tiết + lịch sử đơn/đề nghị</div>
+      ${reportEmpViewMode === "thang" ? (
+        monthRows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
         monthRows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${r.emp.hoTen}</div>
@@ -1779,25 +1830,25 @@ function renderReport(u) {
             </div>
           </div>
           <span class="sub">›</span>
-        </div>`).join("")}
-    </div>
-    <div class="sub" style="text-align:center;margin-top:10px;">Bên dưới là số liệu toàn thời gian (không giới hạn theo tháng) để tham khảo thêm.</div>
-    <div style="height:4px;"></div>
-
-    <div style="height:12px;"></div>
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Toàn thời gian (không theo tháng)</div>
-      ${rows.length === 0 ? `<div class="empty">Chưa có dữ liệu.</div>` :
-        rows.map((r) => `<div class="list-item" style="padding:12px 16px;">
+        </div>`).join("")
+      ) : (
+        allTimeRows.length === 0 ? `<div class="empty">Chưa có dữ liệu.</div>` :
+        allTimeRows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.id}">
           <div style="flex:1;"><div style="font-weight:600;">${r.hoTen}</div><div class="sub">${r.phongBan} · ${r.soNgay} ngày công${r.soNgayTre > 0 ? ` · <span style="color:var(--amber);">${r.soNgayTre} lần trễ</span>` : ""}</div></div>
           <div style="font-weight:700;color:var(--primary);">${r.tongGio.toFixed(1)}h</div>
-        </div>`).join("")}
+        </div>`).join("")
+      )}
     </div>
-    ` : ""}
+  `;
+}
 
-    ${canViewLeaveSection ? `
-    <div style="height:12px;"></div>
-    <div class="card" style="padding:0;overflow:hidden;">
+// ---- TAB 3: CẦN DUYỆT - đơn nghỉ phép + đề nghị sửa công đang chờ xử lý ----
+function renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeaveSection, canViewCorrectionSection) {
+  let html = "";
+
+  if (canViewLeaveSection) {
+    html += `
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Đơn nghỉ phép chờ duyệt (${pendingLeaves.length})</div>
       ${pendingLeaves.length === 0 ? `<div class="empty">Không có đơn chờ duyệt.</div>` :
         pendingLeaves.map((l) => {
@@ -1813,11 +1864,11 @@ function renderReport(u) {
             </div>` : `<div class="sub" style="font-style:italic;">${isHigherLevel ? "Yêu cầu của Quản lý/Admin — chỉ Admin mới duyệt được." : "Bạn không có quyền duyệt đơn — cần Admin cấp quyền."}</div>`}
           </div>`;
         }).join("")}
-    </div>
-    ` : ""}
+    </div>`;
+  }
 
-    ${canViewCorrectionSection ? `
-    <div style="height:12px;"></div>
+  if (canViewCorrectionSection) {
+    html += `
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Đề nghị sửa công chờ duyệt (${pendingCorrections.length})</div>
       ${pendingCorrections.length === 0 ? `<div class="empty">Không có đề nghị chờ duyệt.</div>` :
@@ -1836,11 +1887,16 @@ function renderReport(u) {
             </div>` : `<div class="sub" style="font-style:italic;">${isHigherLevel ? "Yêu cầu của Quản lý/Admin — chỉ Admin mới duyệt được." : "Bạn không có quyền duyệt — cần Admin cấp quyền."}</div>`}
           </div>`;
         }).join("")}
-    </div>
-    ` : ""}
-  </div>`;
+    </div>`;
+  }
+
+  return html;
 }
+
 function bindReportEvents(u) {
+  document.querySelectorAll("[data-report-tab]").forEach((b) => b.onclick = () => { reportViewTab = b.dataset.reportTab; renderApp(); });
+  document.querySelectorAll("[data-emp-view-mode]").forEach((b) => b.onclick = () => { reportEmpViewMode = b.dataset.empViewMode; renderApp(); });
+
   document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => decideLeave(b.dataset.approve, "DaDuyet", u));
   document.querySelectorAll("[data-reject]").forEach((b) => b.onclick = () => decideLeave(b.dataset.reject, "TuChoi", u));
   document.querySelectorAll("[data-approve-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.approveCor, "DaDuyet", u));
