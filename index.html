@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-28";
+const APP_VERSION = "20260808-29";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1754,18 +1754,18 @@ function renderReport(u) {
       </div>
     </div>
 
-    <!-- TỔNG QUAN CẤP CÔNG TY - dành cho Quản lý/Admin nắm nhanh tình hình chung -->
+    <!-- TỔNG QUAN CẤP CÔNG TY - dành cho Quản lý/Admin nắm nhanh tình hình chung, bấm từng ô để xem chi tiết -->
     <div class="row" style="margin-bottom:10px;">
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${companyStats.tongNhanVienCoCong}/${monthRows.length}</div><div class="sub" style="font-size:11px;">NV có công / tổng NV</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongCong}</div><div class="sub" style="font-size:11px;">Tổng công cả tháng</div></div>
+      <div class="card" data-company-stat="coCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${companyStats.tongNhanVienCoCong}/${monthRows.length}</div><div class="sub" style="font-size:11px;">NV có công / tổng NV ›</div></div>
+      <div class="card" data-company-stat="tongCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongCong}</div><div class="sub" style="font-size:11px;">Tổng công cả tháng ›</div></div>
     </div>
     <div class="row" style="margin-bottom:10px;">
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:11px;">Tổng giờ làm thêm</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${companyStats.tongTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${companyStats.tongTreSom}</div><div class="sub" style="font-size:11px;">Lượt đi trễ/về sớm</div></div>
+      <div class="card" data-company-stat="gioLamThem" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${companyStats.tongGioLamThem.toFixed(1)}h</div><div class="sub" style="font-size:11px;">Tổng giờ làm thêm ›</div></div>
+      <div class="card" data-company-stat="treSom" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${companyStats.tongTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${companyStats.tongTreSom}</div><div class="sub" style="font-size:11px;">Lượt đi trễ/về sớm ›</div></div>
     </div>
     <div class="row" style="margin-bottom:12px;">
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--red);">${companyStats.tongNgayNghi}</div><div class="sub" style="font-size:11px;">Tổng ngày nghỉ</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${(pendingLeaves.length + pendingCorrections.length) > 0 ? "var(--amber)" : "var(--ink)"};">${pendingLeaves.length + pendingCorrections.length}</div><div class="sub" style="font-size:11px;">Đơn/đề nghị chờ duyệt</div></div>
+      <div class="card" data-company-stat="ngayNghi" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--red);">${companyStats.tongNgayNghi}</div><div class="sub" style="font-size:11px;">Tổng ngày nghỉ ›</div></div>
+      <div class="card" data-company-stat="pending" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${(pendingLeaves.length + pendingCorrections.length) > 0 ? "var(--amber)" : "var(--ink)"};">${pendingLeaves.length + pendingCorrections.length}</div><div class="sub" style="font-size:11px;">Đơn/đề nghị chờ duyệt ›</div></div>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden;">
@@ -1878,7 +1878,85 @@ function bindReportEvents(u) {
   document.querySelectorAll("[data-emp-detail]").forEach((el) => {
     el.onclick = () => openEmployeeMonthDetail(el.dataset.empDetail, reportMonthState.year, reportMonthState.month);
   });
+  document.querySelectorAll("[data-company-stat]").forEach((el) => {
+    el.onclick = () => openCompanyStatDetail(el.dataset.companyStat, reportMonthState.year, reportMonthState.month);
+  });
 }
+// Bấm vào 1 ô trong "Tổng quan" -> hiện chi tiết TỪNG NHÂN VIÊN liên quan tới chỉ số đó
+function openCompanyStatDetail(kind, year, month) {
+  const empRows = activeEmployees().map((emp) => ({ emp, stats: computeMonthStats(emp.id, year, month) }));
+  const prefix = `${year}-${String(month).padStart(2, "0")}`;
+  let title = "", rowsHtml = "";
+
+  if (kind === "coCong") {
+    title = "Nhân viên có công / chưa có công";
+    const sorted = [...empRows].sort((a, b) => b.stats.tongCong - a.stats.tongCong);
+    rowsHtml = sorted.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
+      <span>${r.emp.hoTen}</span><span style="font-weight:600;color:${r.stats.tongCong > 0 ? "var(--green)" : "var(--red)"};">${r.stats.tongCong > 0 ? r.stats.tongCong + " công" : "Chưa có công"}</span></div>`).join("");
+  } else if (kind === "tongCong") {
+    title = "Tổng công theo nhân viên";
+    const sorted = [...empRows].sort((a, b) => b.stats.tongCong - a.stats.tongCong);
+    rowsHtml = sorted.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
+      <span>${r.emp.hoTen}</span><span style="font-weight:600;">${r.stats.tongCong} công</span></div>`).join("");
+  } else if (kind === "gioLamThem") {
+    title = "Giờ làm thêm theo nhân viên";
+    const filtered = empRows.filter((r) => r.stats.tongGioLamThem > 0).sort((a, b) => b.stats.tongGioLamThem - a.stats.tongGioLamThem);
+    rowsHtml = filtered.length === 0 ? `<div class="empty">Chưa có ai làm thêm giờ tháng này.</div>` :
+      filtered.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
+        <span>${r.emp.hoTen}</span><span style="font-weight:600;color:var(--green);">+${r.stats.tongGioLamThem.toFixed(1)}h</span></div>`).join("");
+  } else if (kind === "treSom") {
+    title = "Chi tiết đi trễ / về sớm";
+    const filtered = empRows.filter((r) => r.stats.soLanTreSom > 0).sort((a, b) => b.stats.soLanTreSom - a.stats.soLanTreSom);
+    rowsHtml = filtered.length === 0 ? `<div class="empty">Không có ai đi trễ/về sớm tháng này.</div>` :
+      filtered.map((r) => {
+        const days = state.records.filter((rec) => !rec.deleted && rec.employeeId === r.emp.id && rec.dayKey && rec.dayKey.startsWith(prefix) &&
+          ((rec.gioVao && isLate(rec.gioVao)) || (rec.gioRa && isEarlyLeave(rec.gioRa))));
+        const daysHtml = days.map((d) => {
+          const reasons = [];
+          if (d.gioVao && isLate(d.gioVao)) reasons.push(`Trễ (vào ${d.gioVao})`);
+          if (d.gioRa && isEarlyLeave(d.gioRa)) reasons.push(`Sớm (ra ${d.gioRa})`);
+          return `<div class="sub" style="padding-left:10px;margin-top:2px;">• ${d.ngay}: ${reasons.join(", ")}</div>`;
+        }).join("");
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="font-weight:600;">${r.emp.hoTen} <span style="color:var(--amber);font-weight:400;">(${r.stats.soLanTreSom} lần)</span></div>
+          ${daysHtml}
+        </div>`;
+      }).join("");
+  } else if (kind === "ngayNghi") {
+    title = "Ngày nghỉ theo nhân viên";
+    const filtered = empRows.filter((r) => r.stats.soNgayNghi > 0).sort((a, b) => b.stats.soNgayNghi - a.stats.soNgayNghi);
+    rowsHtml = filtered.length === 0 ? `<div class="empty">Không có ai nghỉ phép tháng này.</div>` :
+      filtered.map((r) => {
+        const leaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === r.emp.id && l.trangThai === "DaDuyet" && daysInLeaveWithinMonth(l, year, month) > 0);
+        const leavesHtml = leaves.map((l) => `<div class="sub" style="padding-left:10px;margin-top:2px;">• ${l.loaiNghi}: ${l.tuNgay} → ${l.denNgay}</div>`).join("");
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="font-weight:600;">${r.emp.hoTen} <span style="color:var(--red);font-weight:400;">(${r.stats.soNgayNghi} ngày)</span></div>
+          ${leavesHtml}
+        </div>`;
+      }).join("");
+  } else if (kind === "pending") {
+    title = "Đơn/đề nghị chờ duyệt";
+    const pl = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet");
+    const pc = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
+    const plHtml = pl.map((l) => {
+      const emp = state.employees.find((e) => e.id === l.employeeId);
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--line);"><div style="font-weight:600;font-size:13px;">${emp ? emp.hoTen : l.employeeId} — Đơn nghỉ phép</div><div class="sub">${l.loaiNghi} · ${l.tuNgay} → ${l.denNgay}</div></div>`;
+    }).join("");
+    const pcHtml = pc.map((c) => {
+      const emp = state.employees.find((e) => e.id === c.employeeId);
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--line);"><div style="font-weight:600;font-size:13px;">${emp ? emp.hoTen : c.employeeId} — Đề nghị sửa công</div><div class="sub">Ngày ${c.ngayCanSua}</div></div>`;
+    }).join("");
+    rowsHtml = (pl.length + pc.length) === 0 ? `<div class="empty">Không có gì đang chờ duyệt.</div>` : plHtml + pcHtml;
+  }
+
+  openSheet(`
+    <div class="sheet-title">${title}</div>
+    <div style="max-height:60vh;overflow-y:auto;">${rowsHtml}</div>
+    <button class="btn btn-outline" id="cs_close" style="margin-top:14px;">Đóng</button>
+  `);
+  document.getElementById("cs_close").onclick = closeSheet;
+}
+
 function openEmployeeMonthDetail(employeeId, year, month) {
   const emp = state.employees.find((e) => e.id === employeeId);
   const stats = computeMonthStats(employeeId, year, month);
