@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-29";
+const APP_VERSION = "20260808-30";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1891,19 +1891,19 @@ function openCompanyStatDetail(kind, year, month) {
   if (kind === "coCong") {
     title = "Nhân viên có công / chưa có công";
     const sorted = [...empRows].sort((a, b) => b.stats.tongCong - a.stats.tongCong);
-    rowsHtml = sorted.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
-      <span>${r.emp.hoTen}</span><span style="font-weight:600;color:${r.stats.tongCong > 0 ? "var(--green)" : "var(--red)"};">${r.stats.tongCong > 0 ? r.stats.tongCong + " công" : "Chưa có công"}</span></div>`).join("");
+    rowsHtml = sorted.map((r) => `<div data-goto-emp="${r.emp.id}" style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+      <span>${r.emp.hoTen}</span><span style="display:flex;align-items:center;gap:4px;"><b style="color:${r.stats.tongCong > 0 ? "var(--green)" : "var(--red)"};">${r.stats.tongCong > 0 ? r.stats.tongCong + " công" : "Chưa có công"}</b><span class="sub">›</span></span></div>`).join("");
   } else if (kind === "tongCong") {
     title = "Tổng công theo nhân viên";
     const sorted = [...empRows].sort((a, b) => b.stats.tongCong - a.stats.tongCong);
-    rowsHtml = sorted.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
-      <span>${r.emp.hoTen}</span><span style="font-weight:600;">${r.stats.tongCong} công</span></div>`).join("");
+    rowsHtml = sorted.map((r) => `<div data-goto-emp="${r.emp.id}" style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+      <span>${r.emp.hoTen}</span><span style="display:flex;align-items:center;gap:4px;"><b>${r.stats.tongCong} công</b><span class="sub">›</span></span></div>`).join("");
   } else if (kind === "gioLamThem") {
     title = "Giờ làm thêm theo nhân viên";
     const filtered = empRows.filter((r) => r.stats.tongGioLamThem > 0).sort((a, b) => b.stats.tongGioLamThem - a.stats.tongGioLamThem);
     rowsHtml = filtered.length === 0 ? `<div class="empty">Chưa có ai làm thêm giờ tháng này.</div>` :
-      filtered.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;">
-        <span>${r.emp.hoTen}</span><span style="font-weight:600;color:var(--green);">+${r.stats.tongGioLamThem.toFixed(1)}h</span></div>`).join("");
+      filtered.map((r) => `<div data-goto-emp="${r.emp.id}" style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+        <span>${r.emp.hoTen}</span><span style="display:flex;align-items:center;gap:4px;"><b style="color:var(--green);">+${r.stats.tongGioLamThem.toFixed(1)}h</b><span class="sub">›</span></span></div>`).join("");
   } else if (kind === "treSom") {
     title = "Chi tiết đi trễ / về sớm";
     const filtered = empRows.filter((r) => r.stats.soLanTreSom > 0).sort((a, b) => b.stats.soLanTreSom - a.stats.soLanTreSom);
@@ -1917,8 +1917,10 @@ function openCompanyStatDetail(kind, year, month) {
           if (d.gioRa && isEarlyLeave(d.gioRa)) reasons.push(`Sớm (ra ${d.gioRa})`);
           return `<div class="sub" style="padding-left:10px;margin-top:2px;">• ${d.ngay}: ${reasons.join(", ")}</div>`;
         }).join("");
-        return `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
-          <div style="font-weight:600;">${r.emp.hoTen} <span style="color:var(--amber);font-weight:400;">(${r.stats.soLanTreSom} lần)</span></div>
+        return `<div data-goto-emp="${r.emp.id}" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;">${r.emp.hoTen} <span style="color:var(--amber);font-weight:400;">(${r.stats.soLanTreSom} lần)</span></span><span class="sub">›</span>
+          </div>
           ${daysHtml}
         </div>`;
       }).join("");
@@ -1929,8 +1931,10 @@ function openCompanyStatDetail(kind, year, month) {
       filtered.map((r) => {
         const leaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === r.emp.id && l.trangThai === "DaDuyet" && daysInLeaveWithinMonth(l, year, month) > 0);
         const leavesHtml = leaves.map((l) => `<div class="sub" style="padding-left:10px;margin-top:2px;">• ${l.loaiNghi}: ${l.tuNgay} → ${l.denNgay}</div>`).join("");
-        return `<div style="padding:8px 0;border-bottom:1px solid var(--line);">
-          <div style="font-weight:600;">${r.emp.hoTen} <span style="color:var(--red);font-weight:400;">(${r.stats.soNgayNghi} ngày)</span></div>
+        return `<div data-goto-emp="${r.emp.id}" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;">${r.emp.hoTen} <span style="color:var(--red);font-weight:400;">(${r.stats.soNgayNghi} ngày)</span></span><span class="sub">›</span>
+          </div>
           ${leavesHtml}
         </div>`;
       }).join("");
@@ -1940,21 +1944,27 @@ function openCompanyStatDetail(kind, year, month) {
     const pc = state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet");
     const plHtml = pl.map((l) => {
       const emp = state.employees.find((e) => e.id === l.employeeId);
-      return `<div style="padding:8px 0;border-bottom:1px solid var(--line);"><div style="font-weight:600;font-size:13px;">${emp ? emp.hoTen : l.employeeId} — Đơn nghỉ phép</div><div class="sub">${l.loaiNghi} · ${l.tuNgay} → ${l.denNgay}</div></div>`;
+      return `<div data-goto-emp="${l.employeeId}" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-weight:600;font-size:13px;">${emp ? emp.hoTen : l.employeeId} — Đơn nghỉ phép</div><div class="sub">${l.loaiNghi} · ${l.tuNgay} → ${l.denNgay}</div></div><span class="sub">›</span></div>`;
     }).join("");
     const pcHtml = pc.map((c) => {
       const emp = state.employees.find((e) => e.id === c.employeeId);
-      return `<div style="padding:8px 0;border-bottom:1px solid var(--line);"><div style="font-weight:600;font-size:13px;">${emp ? emp.hoTen : c.employeeId} — Đề nghị sửa công</div><div class="sub">Ngày ${c.ngayCanSua}</div></div>`;
+      return `<div data-goto-emp="${c.employeeId}" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-weight:600;font-size:13px;">${emp ? emp.hoTen : c.employeeId} — Đề nghị sửa công</div><div class="sub">Ngày ${c.ngayCanSua}</div></div><span class="sub">›</span></div>`;
     }).join("");
     rowsHtml = (pl.length + pc.length) === 0 ? `<div class="empty">Không có gì đang chờ duyệt.</div>` : plHtml + pcHtml;
   }
 
   openSheet(`
     <div class="sheet-title">${title}</div>
+    <div class="sub" style="margin-bottom:8px;">Bấm vào 1 dòng để xem chi tiết đầy đủ của nhân viên đó.</div>
     <div style="max-height:60vh;overflow-y:auto;">${rowsHtml}</div>
     <button class="btn btn-outline" id="cs_close" style="margin-top:14px;">Đóng</button>
   `);
   document.getElementById("cs_close").onclick = closeSheet;
+  document.querySelectorAll("[data-goto-emp]").forEach((el) => {
+    el.onclick = () => openEmployeeMonthDetail(el.dataset.gotoEmp, year, month);
+  });
 }
 
 function openEmployeeMonthDetail(employeeId, year, month) {
@@ -1998,9 +2008,19 @@ function openEmployeeMonthDetail(employeeId, year, month) {
         </div>`).join("")}
     </div>
 
-    <button class="btn btn-outline" id="empd_close" style="margin-top:14px;">Đóng</button>
+    <button class="btn btn-primary" id="empd_gotobangcong" style="margin-top:14px;">Xem Bảng công của ${emp ? emp.hoTen : "nhân viên này"} →</button>
+    <button class="btn btn-outline" id="empd_close" style="margin-top:8px;">Đóng</button>
   `);
   document.getElementById("empd_close").onclick = closeSheet;
+  document.getElementById("empd_gotobangcong").onclick = () => {
+    closeSheet();
+    bcState.employeeId = employeeId;
+    bcState.year = year;
+    bcState.month = month;
+    bcState.mode = "calendar";
+    currentTab = "history";
+    renderApp();
+  };
 }
 function decideLeave(id, trangThai, u) {
   const l = state.leaveRequests.find((x) => x.id === id);
