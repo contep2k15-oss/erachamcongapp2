@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-32";
+const APP_VERSION = "20260808-33";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -2145,19 +2145,51 @@ function openLeaveForm(u) {
 // =====================================================================
 // SCREEN: CÀI ĐẶT
 // =====================================================================
+let settingsViewTab = null; // "canhan" | "quantri" | "ungdung"
+
 function renderSettings(u) {
   const admin = isAdmin(u);
-  const myLeaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === u.id)
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-  const myCorrections = state.correctionRequests.filter((c) => !c.deleted && c.employeeId === u.id)
-    .sort((a, b) => b.updatedAt - a.updatedAt);
   const vaiTroLabel = u.vaiTro === "Admin" ? "Admin" : u.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên";
+
+  const availableTabs = [
+    { key: "canhan", label: "Cá nhân" },
+    ...(admin ? [{ key: "quantri", label: "Quản trị" }] : []),
+    { key: "ungdung", label: "Ứng dụng" },
+  ];
+  if (!settingsViewTab || !availableTabs.find((t) => t.key === settingsViewTab)) {
+    settingsViewTab = "canhan";
+  }
+
+  let bodyHtml = "";
+  if (settingsViewTab === "canhan") bodyHtml = renderSettingsCaNhan(u, vaiTroLabel, admin);
+  else if (settingsViewTab === "quantri") bodyHtml = renderSettingsQuanTri();
+  else if (settingsViewTab === "ungdung") bodyHtml = renderSettingsUngDung(admin);
 
   return `
   <div class="header"><div class="title">Cài đặt</div></div>
   <div class="pad">
+    <div class="tabs" style="margin-bottom:12px;">
+      ${availableTabs.map((t) => `<button type="button" data-settings-tab="${t.key}" class="${settingsViewTab === t.key ? "active" : ""}">${t.label}</button>`).join("")}
+    </div>
 
-    <!-- ===== HỒ SƠ ===== -->
+    ${bodyHtml}
+
+    <!-- ===== ĐĂNG XUẤT - LUÔN Ở CUỐI CÙNG, TÁCH RIÊNG, KHÔNG PHỤ THUỘC TAB ===== -->
+    <div style="height:8px;"></div>
+    <div class="card" style="padding:6px;">
+      <button class="btn btn-red" id="btnLogout" style="background:transparent;font-weight:700;">Đăng xuất</button>
+    </div>
+  </div>`;
+}
+
+// ---- TAB 1: CÁ NHÂN - hồ sơ + yêu cầu đã gửi ----
+function renderSettingsCaNhan(u, vaiTroLabel, admin) {
+  const myLeaves = state.leaveRequests.filter((l) => !l.deleted && l.employeeId === u.id)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const myCorrections = state.correctionRequests.filter((c) => !c.deleted && c.employeeId === u.id)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return `
     <div class="card" style="text-align:center;padding:22px 16px;">
       <div style="width:60px;height:60px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin:0 auto 10px;">
         ${(u.hoTen || "?").split(" ").slice(-1)[0][0]}
@@ -2170,10 +2202,6 @@ function renderSettings(u) {
       </div>` : ""}
     </div>
 
-    <!-- ===== YÊU CẦU CỦA TÔI ===== -->
-    <!-- Nút "Tạo đơn nghỉ phép" / "Đề nghị cập nhật công" đã có sẵn trong menu "Thêm"
-         (thanh điều hướng dưới cùng) - không lặp lại nút tạo mới ở đây, chỉ hiện
-         danh sách trạng thái các đơn/đề nghị đã gửi. -->
     <div class="settings-section-label">Yêu cầu của tôi</div>
     <div class="card">
       <div style="font-weight:700;margin-bottom:10px;">Đơn nghỉ phép của tôi</div>
@@ -2196,23 +2224,29 @@ function renderSettings(u) {
           <div class="sub">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"}</div>
         </div>`).join("")}
     </div>
+  `;
+}
 
-    ${admin ? `
-    <!-- ===== QUẢN TRỊ HỆ THỐNG (chỉ Admin) ===== -->
-    <div class="settings-section-label">Quản trị hệ thống</div>
+// ---- TAB 2: QUẢN TRỊ (chỉ Admin) - dữ liệu hệ thống + cấu hình giờ làm/GPS tách riêng ----
+function renderSettingsQuanTri() {
+  return `
     <div class="card">
       <div style="font-weight:700;margin-bottom:10px;">Sửa dữ liệu trực tiếp trên hệ thống</div>
-      <div class="sub">Bạn có thể sửa tay trong các bảng dữ liệu <b>CC_NHANVIEN</b>, <b>CC_CHAMCONG</b>, <b>CC_NGHIPHEP</b>, <b>CC_CAUHINH</b> trên hệ thống dữ liệu trung tâm — thay đổi sẽ tự động có hiệu lực trong app (trong vòng 20-30 giây, hoặc bấm "Đồng bộ ngay" bên dưới để thấy ngay lập tức). Không cần thao tác gì thêm.</div>
+      <div class="sub">Bạn có thể sửa tay trong các bảng dữ liệu <b>CC_NHANVIEN</b>, <b>CC_CHAMCONG</b>, <b>CC_NGHIPHEP</b>, <b>CC_CAUHINH</b> trên hệ thống dữ liệu trung tâm — thay đổi sẽ tự động có hiệu lực trong app (trong vòng 20-30 giây, hoặc bấm "Đồng bộ ngay" ở tab Ứng dụng để thấy ngay lập tức). Không cần thao tác gì thêm.</div>
     </div>
 
+    <div class="settings-section-label">Giờ làm chuẩn</div>
     <div class="card">
-      <div style="font-weight:700;margin-bottom:10px;">Cấu hình giờ làm</div>
       <label class="sub" style="display:block;margin-bottom:4px;">Giờ vào chuẩn</label>
       ${renderCustomTime("cf_gv", state.config.gioChuan)}
       <label class="sub" style="display:block;margin-bottom:4px;">Giờ ra chuẩn</label>
       ${renderCustomTime("cf_gr", state.config.gioRaChuan)}
       <label class="sub" style="display:block;margin-bottom:4px;">Số phút cho phép trễ</label>
       <input class="input" id="cf_tre" type="text" inputmode="numeric" value="${state.config.soPhutChoPhepTre}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_tre_field" />
+    </div>
+
+    <div class="settings-section-label">Định vị GPS khi chấm công</div>
+    <div class="card">
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <input type="checkbox" id="cf_gps" ${state.config.batBuocGPS ? "checked" : ""} /> Bắt buộc chấm công trong bán kính công ty
       </label>
@@ -2222,10 +2256,13 @@ function renderSettings(u) {
       <button class="btn btn-outline" id="cf_setloc" style="margin-bottom:8px;">Lấy vị trí hiện tại làm vị trí công ty</button>
       <div class="sub" id="cf_locinfo" style="margin-bottom:10px;">${state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí công ty"}</div>
       <button class="btn btn-primary" id="btnSaveConfig">Lưu cấu hình</button>
-    </div>` : ""}
+    </div>
+  `;
+}
 
-    <!-- ===== ỨNG DỤNG ===== -->
-    <div class="settings-section-label">Ứng dụng</div>
+// ---- TAB 3: ỨNG DỤNG - đồng bộ, bộ nhớ đệm, phiên bản ----
+function renderSettingsUngDung(admin) {
+  return `
     ${admin ? `
     <div class="card">
       <div style="font-weight:700;margin-bottom:10px;">Đồng bộ dữ liệu</div>
@@ -2243,21 +2280,17 @@ function renderSettings(u) {
       <button class="btn btn-outline" id="btnResetCache">Xoá bộ nhớ đệm & tải lại từ hệ thống</button>
     </div>` : ""}
 
-    <div class="card">
-      <div style="font-weight:700;margin-bottom:10px;">Phiên bản ứng dụng</div>
-      <div class="sub" style="margin-bottom:10px;">Đang dùng bản: ${APP_VERSION}</div>
+    <div class="card" style="text-align:center;">
+      <div style="font-weight:700;margin-bottom:6px;">Era Chấm Công</div>
+      <div class="sub" style="margin-bottom:12px;">Phiên bản ${APP_VERSION}</div>
       <button class="btn btn-outline" id="btnCheckUpdate">Kiểm tra cập nhật</button>
     </div>
-
-    <!-- ===== ĐĂNG XUẤT - LUÔN Ở CUỐI CÙNG, TÁCH RIÊNG, TỰ THÀNH 1 KHỐI ===== -->
-    <div style="height:8px;"></div>
-    <div class="card" style="padding:6px;">
-      <button class="btn btn-red" id="btnLogout" style="background:transparent;font-weight:700;">Đăng xuất</button>
-    </div>
-    <div class="sub" style="text-align:center;margin-top:14px;">Era Chấm Công · Phiên bản ${APP_VERSION}</div>
-  </div>`;
+  `;
 }
+
 function bindSettingsEvents(u) {
+  document.querySelectorAll("[data-settings-tab]").forEach((b) => b.onclick = () => { settingsViewTab = b.dataset.settingsTab; renderApp(); });
+
   const logoutBtn = document.getElementById("btnLogout");
   if (logoutBtn) logoutBtn.onclick = doLogout;
   const syncBtn = document.getElementById("btnSyncNow");
