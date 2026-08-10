@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-33";
+const APP_VERSION = "20260808-34";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -2173,12 +2173,6 @@ function renderSettings(u) {
     </div>
 
     ${bodyHtml}
-
-    <!-- ===== ĐĂNG XUẤT - LUÔN Ở CUỐI CÙNG, TÁCH RIÊNG, KHÔNG PHỤ THUỘC TAB ===== -->
-    <div style="height:8px;"></div>
-    <div class="card" style="padding:6px;">
-      <button class="btn btn-red" id="btnLogout" style="background:transparent;font-weight:700;">Đăng xuất</button>
-    </div>
   </div>`;
 }
 
@@ -2284,6 +2278,11 @@ function renderSettingsUngDung(admin) {
       <div style="font-weight:700;margin-bottom:6px;">Era Chấm Công</div>
       <div class="sub" style="margin-bottom:12px;">Phiên bản ${APP_VERSION}</div>
       <button class="btn btn-outline" id="btnCheckUpdate">Kiểm tra cập nhật</button>
+    </div>
+
+    <div style="height:8px;"></div>
+    <div class="card" style="padding:6px;">
+      <button class="btn btn-red" id="btnLogout" style="background:transparent;font-weight:700;">Đăng xuất</button>
     </div>
   `;
 }
