@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-34";
+const APP_VERSION = "20260808-38";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1714,7 +1714,7 @@ function renderReport(u) {
   const canViewCanDuyetTab = canViewLeaveSection || canViewCorrectionSection;
 
   const availableTabs = [
-    ...(canViewFullReport ? [{ key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }] : []),
+    ...(canViewFullReport ? [{ key: "homnay", label: "Hôm nay" }, { key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }] : []),
     ...(canViewCanDuyetTab ? [{ key: "canduyet", label: "Cần duyệt" }] : []),
   ];
   if (!reportViewTab || !availableTabs.find((t) => t.key === reportViewTab)) {
@@ -1726,7 +1726,8 @@ function renderReport(u) {
   const soLuongCanDuyet = (canViewLeaveSection ? pendingLeaves.length : 0) + (canViewCorrectionSection ? pendingCorrections.length : 0);
 
   let bodyHtml = "";
-  if (reportViewTab === "tongquan") bodyHtml = renderReportTongQuan();
+  if (reportViewTab === "homnay") bodyHtml = renderReportHomNay();
+  else if (reportViewTab === "tongquan") bodyHtml = renderReportTongQuan();
   else if (reportViewTab === "theonhanvien") bodyHtml = renderReportTheoNhanVien();
   else if (reportViewTab === "canduyet") bodyHtml = renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeaveSection, canViewCorrectionSection);
   else bodyHtml = `<div class="empty">Bạn chưa được cấp quyền xem báo cáo hoặc duyệt đơn nào. Liên hệ Admin để được cấp quyền.</div>`;
@@ -1743,6 +1744,67 @@ function renderReport(u) {
 }
 
 // ---- TAB 1: TỔNG QUAN - số liệu cấp công ty theo tháng ----
+// ---- TAB "HÔM NAY" - trạng thái chấm công của toàn bộ nhân viên trong ngày hôm nay ----
+function computeTodayStatus(emp) {
+  const dayKey = todayKey();
+  const rec = state.records.find((r) => !r.deleted && r.employeeId === emp.id && r.dayKey === dayKey);
+  const leave = state.leaveRequests.find((l) => !l.deleted && l.employeeId === emp.id && l.trangThai === "DaDuyet" && l.tuNgay <= dayKey && l.denNgay >= dayKey);
+
+  let status = "chuaChamCong", label = "Chưa chấm công", bg = "#FBEAEA", color = "var(--red)";
+  if (leave) {
+    status = "nghiPhep"; label = "Nghỉ phép"; bg = "#F3F5F9"; color = "var(--sub)";
+  } else if (rec && rec.gioVao && rec.gioRa) {
+    const late = isLate(rec.gioVao) || isEarlyLeave(rec.gioRa);
+    status = late ? "hoanTatTre" : "hoanTat";
+    label = late ? "Hoàn tất (trễ/sớm)" : "Hoàn tất";
+    bg = late ? "#FDF3E4" : "#E7F8F0"; color = late ? "var(--amber)" : "var(--green)";
+  } else if (rec && rec.gioVao) {
+    const late = isLate(rec.gioVao);
+    status = late ? "dangLamTre" : "dangLam";
+    label = late ? "Đang làm (trễ)" : "Đang làm";
+    bg = late ? "#FDF3E4" : "#E9F1FF"; color = late ? "var(--amber)" : "var(--primary)";
+  }
+  return { emp, rec, leave, status, label, bg, color };
+}
+
+function renderReportHomNay() {
+  const rows = activeEmployees().map(computeTodayStatus).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
+  const soDaChamCong = rows.filter((r) => r.rec && r.rec.gioVao).length;
+  const soDangLam = rows.filter((r) => r.status === "dangLam" || r.status === "dangLamTre").length;
+  const soDiTre = rows.filter((r) => r.status === "dangLamTre" || r.status === "hoanTatTre").length;
+  const soNghiPhep = rows.filter((r) => r.status === "nghiPhep").length;
+  const soChuaChamCong = rows.filter((r) => r.status === "chuaChamCong").length;
+
+  return `
+    <div class="sub" style="text-align:center;margin-bottom:10px;text-transform:capitalize;">${nowVNWeekdayLong()}</div>
+
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub" style="font-size:11px;">Tổng nhân viên</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--green);">${soDaChamCong}</div><div class="sub" style="font-size:11px;">Đã chấm công</div></div>
+    </div>
+    <div class="row" style="margin-bottom:10px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${soDangLam}</div><div class="sub" style="font-size:11px;">Đang làm</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${soDiTre > 0 ? "var(--amber)" : "var(--ink)"};">${soDiTre}</div><div class="sub" style="font-size:11px;">Đi trễ</div></div>
+    </div>
+    <div class="row" style="margin-bottom:12px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--sub);">${soNghiPhep}</div><div class="sub" style="font-size:11px;">Nghỉ phép</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${soChuaChamCong > 0 ? "var(--red)" : "var(--ink)"};">${soChuaChamCong}</div><div class="sub" style="font-size:11px;">Chưa chấm công</div></div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Danh sách chấm công hôm nay</div>
+      ${rows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+        rows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;">${r.emp.hoTen}</div>
+            <div class="sub">${r.emp.phongBan || ""} · ${r.rec ? `${r.rec.gioVao || "—"} → ${r.rec.gioRa || "—"}` : "—"}</div>
+          </div>
+          <span class="pill" style="background:${r.bg};color:${r.color};">${r.label}</span>
+        </div>`).join("")}
+    </div>
+  `;
+}
+
 function renderReportTongQuan() {
   const monthRows = activeEmployees().map((emp) => {
     const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
