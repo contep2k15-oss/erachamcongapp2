@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-38";
+const APP_VERSION = "20260808-39";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -650,9 +650,10 @@ function handleSessionExpired() {
   renderApp();
 }
 
-async function syncPush() {
-  if (syncing) return;
+async function syncPush(silent) {
+  if (syncing) return false;
   syncing = true;
+  let ok = false;
   try {
     const res = await apiCall("POST", {
       action: "sync",
@@ -665,16 +666,19 @@ async function syncPush() {
     if (res.success) {
       mergeServerIntoLocal(res.data);
       renderApp();
+      ok = true;
     } else if (res.sessionExpired) {
       handleSessionExpired();
     } else {
-      toast("Đồng bộ lỗi: " + res.error);
+      if (!silent) toast("Đồng bộ lỗi: " + res.error);
     }
   } catch (e) {
     // offline hoặc mất mạng - dữ liệu vẫn an toàn trong localStorage, thử lại sau
+    if (!silent) toast("Không có mạng — dữ liệu đã lưu trên máy, sẽ tự đồng bộ lại khi có mạng.");
   } finally {
     syncing = false;
   }
+  return ok;
 }
 
 async function syncPull(silent) {
@@ -1182,8 +1186,16 @@ function bindScreenEventsCheckin(u) {
     }
     saveLocal();
     renderApp();
-    scheduleSync();
-    toast("Đã ghi nhận chấm công.");
+    toast("Đã ghi nhận, đang đồng bộ...");
+    // Gửi lên server NGAY LẬP TỨC (không chờ 4 giây) - tránh trường hợp người dùng
+    // thoát/khoá máy ngay sau khi chấm công khiến dữ liệu chưa kịp gửi đi.
+    const synced = await syncPush(true);
+    if (synced) {
+      toast("Đã chấm công và đồng bộ thành công.");
+    } else {
+      toast("⚠️ Đã lưu trên máy nhưng CHƯA đồng bộ lên hệ thống (mất mạng?). Vui lòng mở lại app sau vài phút để kiểm tra, hoặc vào Cài đặt bấm Đồng bộ ngay.");
+      scheduleSync(); // vẫn thử lại nền, phòng khi mạng chập chờn quay lại ngay sau đó
+    }
   };
 }
 
@@ -2483,6 +2495,17 @@ async function bootstrap() {
   }
   setTimeout(() => checkForUpdate(true), 3000);
   setInterval(() => checkForUpdate(true), 5 * 60 * 1000);
+
+  // LỚP BẢO VỆ CHỐNG MẤT DỮ LIỆU: tự động đẩy lại dữ liệu chưa kịp đồng bộ
+  // (VD: do mất mạng tạm thời, hoặc app bị hệ điều hành tạm dừng ngay sau khi
+  // chấm công) - thử lại ngay khi có mạng trở lại hoặc khi người dùng mở lại app.
+  window.addEventListener("online", () => { if (session) syncPush(true); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && session) {
+      syncPush(true);
+      syncPull(true);
+    }
+  });
 }
 bootstrap();
 
