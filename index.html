@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-41";
+const APP_VERSION = "20260808-42";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -195,7 +195,7 @@ const SESSION_KEY = "cc_session_v1";
 // STATE
 // =====================================================================
 let state = loadLocal() || {
-  employees: [], records: [], leaveRequests: [], correctionRequests: [], auditLog: [], announcements: [],
+  employees: [], records: [], leaveRequests: [], correctionRequests: [], auditLog: [], announcements: [], dutyRoster: [],
   shifts: [{ id: "CA1", tenCa: "Ca hành chính", gioBatDau: "08:00", gioKetThuc: "17:30", updatedAt: 0, deleted: false }],
   config: { gioChuan: "08:00", gioRaChuan: "17:30", soPhutChoPhepTre: 10, batBuocGPS: false, banKinhGPS: 300, viTriCongTy: { lat: null, lng: null }, updatedAt: 0 },
 };
@@ -203,6 +203,7 @@ let state = loadLocal() || {
 if (!state.correctionRequests) state.correctionRequests = [];
 if (!state.auditLog) state.auditLog = [];
 if (!state.announcements) state.announcements = [];
+if (!state.dutyRoster) state.dutyRoster = [];
 let session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); // {employeeId}
 let currentTab = "checkin";
 let syncTimer = null;
@@ -612,6 +613,7 @@ function mergeServerIntoLocal(serverData) {
   state.correctionRequests = mergeCollection(state.correctionRequests, serverData.correctionRequests);
   state.auditLog = mergeCollection(state.auditLog, serverData.auditLog);
   state.announcements = mergeCollection(state.announcements, serverData.announcements);
+  state.dutyRoster = mergeCollection(state.dutyRoster, serverData.dutyRoster);
   state.shifts = mergeCollection(state.shifts, serverData.shifts);
   if (serverData.config && (serverData.config.updatedAt || 0) >= (state.config.updatedAt || 0)) {
     state.config = serverData.config;
@@ -673,7 +675,7 @@ async function syncPush(silent) {
       data: {
         employees: state.employees, records: state.records,
         leaveRequests: state.leaveRequests, correctionRequests: state.correctionRequests,
-        auditLog: state.auditLog, announcements: state.announcements, shifts: state.shifts, config: state.config,
+        auditLog: state.auditLog, announcements: state.announcements, dutyRoster: state.dutyRoster, shifts: state.shifts, config: state.config,
       },
     });
     if (res.success) {
@@ -866,6 +868,7 @@ function openQuickActions(u) {
     <div class="sheet-title">Thêm</div>
     <div class="qa-item" id="qa_leave"><div class="qa-icon">${ICONS.leave}</div><div><div style="font-weight:600;">Tạo đơn nghỉ phép</div><div class="sub">Gửi đơn chờ duyệt</div></div></div>
     <div class="qa-item" id="qa_correction"><div class="qa-icon">${ICONS.edit}</div><div><div style="font-weight:600;">Đề nghị cập nhật công</div><div class="sub">Sửa giờ vào/ra hôm nay</div></div></div>
+    <div class="qa-item" id="qa_duty"><div class="qa-icon">${ICONS.duty}</div><div><div style="font-weight:600;">Bảng trực nhật</div><div class="sub">Xem lịch trực theo tháng</div></div></div>
     ${canAnnounce ? `<div class="qa-item" id="qa_announce"><div class="qa-icon">${ICONS.announce}</div><div><div style="font-weight:600;">Gửi thông báo</div><div class="sub">Nhắn tới toàn bộ hoặc 1 nhân viên</div></div></div>` : ""}
     <div class="qa-item" id="qa_settings"><div class="qa-icon">${ICONS.settings}</div><div><div style="font-weight:600;">Cài đặt</div><div class="sub">Tài khoản, quyền, đồng bộ...</div></div></div>
   `);
@@ -875,6 +878,7 @@ function openQuickActions(u) {
     const today = myTodayRecord(u);
     openCorrectionRequestForm(u, todayKey(), today);
   };
+  document.getElementById("qa_duty").onclick = () => { closeSheet(); currentTab = "duty"; renderApp(); };
   const announceBtn = document.getElementById("qa_announce");
   if (announceBtn) announceBtn.onclick = () => { closeSheet(); openAnnouncementForm(u); };
   document.getElementById("qa_settings").onclick = () => { closeSheet(); currentTab = "settings"; renderApp(); };
@@ -906,7 +910,7 @@ function renderApp() {
     { key: "more", label: "Thêm" },
   ];
   const navBtnHtml = (n) => {
-    const isActive = currentTab === n.key || (n.key === "more" && currentTab === "settings");
+    const isActive = currentTab === n.key || (n.key === "more" && (currentTab === "settings" || currentTab === "duty"));
     return `<button class="${isActive ? "active" : ""}" data-tab="${n.key}">${ICONS[n.key] || ""}<span>${n.label}</span></button>`;
   };
 
@@ -923,7 +927,7 @@ function renderApp() {
   });
 
   const content = document.getElementById("content");
-  const renderers = { checkin: renderCheckin, employees: renderEmployees, history: renderHistory, report: renderReport, settings: renderSettings };
+  const renderers = { checkin: renderCheckin, employees: renderEmployees, history: renderHistory, report: renderReport, settings: renderSettings, duty: renderDutyRoster };
   const fn = renderers[currentTab] || renderCheckin;
   content.innerHTML = fn(u);
   bindScreenEvents(currentTab, u);
@@ -1399,6 +1403,7 @@ const ICONS = {
   leave: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>`,
   edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
   announce: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l3.5 5v-14L6 9H4a1 1 0 0 0-1 1Z"/><path d="M14.5 8.5a5 5 0 0 1 0 7"/><path d="M17.5 5.5a9 9 0 0 1 0 13"/></svg>`,
+  duty: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><line x1="15.5" y1="2.5" x2="15.5" y2="6.5"/><line x1="8.5" y1="2.5" x2="8.5" y2="6.5"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><circle cx="8.5" cy="14.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="14.5" r="1.3" fill="currentColor" stroke="none"/></svg>`,
 };
 
 const VN_WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -2227,6 +2232,199 @@ function openLeaveForm(u) {
 // =====================================================================
 let settingsViewTab = null; // "canhan" | "quantri" | "ungdung"
 
+// =====================================================================
+// SCREEN: BẢNG TRỰC NHẬT - lịch phân công theo tháng, Admin/Quản lý sắp xếp
+// =====================================================================
+let dtState = { year: null, month: null };
+function ensureDtState() {
+  if (dtState.year == null) {
+    const p = nowVNParts();
+    dtState.year = Number(p.year);
+    dtState.month = Number(p.month);
+  }
+}
+function canManageDuty(u) { return isAdmin(u) || u.vaiTro === "QuanLy"; }
+
+function renderDutyRoster(u) {
+  ensureDtState();
+  const prefix = `${dtState.year}-${String(dtState.month).padStart(2, "0")}`;
+  const monthDuties = state.dutyRoster.filter((d) => !d.deleted && d.ngay && d.ngay.startsWith(prefix))
+    .sort((a, b) => a.ngay.localeCompare(b.ngay));
+  const dutyByDay = {};
+  monthDuties.forEach((d) => { (dutyByDay[d.ngay] = dutyByDay[d.ngay] || []).push(d); });
+
+  const firstDay = new Date(dtState.year, dtState.month - 1, 1);
+  const daysInMonth = new Date(dtState.year, dtState.month, 0).getDate();
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const todayK = nowVNDayKey();
+
+  let calHtml = `<div class="card" style="padding:10px;">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;">
+      ${VN_WEEKDAYS.map((w) => `<div style="text-align:center;font-size:11px;color:var(--sub);font-weight:700;">${w}</div>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">`;
+  cells.forEach((d) => {
+    if (d == null) { calHtml += `<div></div>`; return; }
+    const dayKey = `${dtState.year}-${String(dtState.month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const duties = dutyByDay[dayKey] || [];
+    const isToday = dayKey === todayK;
+    calHtml += `<button type="button" data-dt-day="${dayKey}" style="aspect-ratio:1;border:none;border-radius:8px;background:${duties.length > 0 ? "#E9F1FF" : "transparent"};color:${duties.length > 0 ? "var(--primary)" : "var(--ink)"};font-size:13px;font-weight:${isToday ? 800 : 600};cursor:pointer;position:relative;${isToday ? "outline:2px solid var(--primary);outline-offset:-2px;" : ""}">
+      ${d}${duties.length > 0 ? `<div style="width:5px;height:5px;border-radius:50%;background:var(--primary);margin:2px auto 0;"></div>` : ""}
+    </button>`;
+  });
+  calHtml += `</div></div>`;
+
+  return `
+  <div class="header"><div class="title">Bảng trực nhật</div></div>
+  <div class="pad">
+    <div class="card" style="padding:12px 14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <button type="button" class="btn btn-outline" id="dt_prev" style="width:auto;padding:8px 14px;">‹</button>
+        <div style="font-weight:700;">Tháng ${dtState.month}/${dtState.year}</div>
+        <button type="button" class="btn btn-outline" id="dt_next" style="width:auto;padding:8px 14px;">›</button>
+      </div>
+    </div>
+
+    ${calHtml}
+
+    ${canManageDuty(u) ? `<button class="btn btn-primary" id="dt_add" style="margin-top:12px;">+ Phân công trực</button>` : ""}
+
+    <div style="height:12px;"></div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Trực nhật tháng này (${monthDuties.length})</div>
+      ${monthDuties.length === 0 ? `<div class="empty">Chưa có lịch trực nào trong tháng.</div>` :
+        monthDuties.map((d) => {
+          const emp = state.employees.find((e) => e.id === d.employeeId);
+          const [y, m, dd] = d.ngay.split("-");
+          return `<div style="padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;" data-dt-day="${d.ngay}">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-weight:600;">${dd}/${m} — ${emp ? emp.hoTen : d.employeeId}</span>
+            </div>
+            <div class="sub">${d.congViec || "Trực nhật"}${d.ghiChu ? " · " + d.ghiChu : ""}</div>
+          </div>`;
+        }).join("")}
+    </div>
+  </div>`;
+}
+
+function bindDutyRosterEvents(u) {
+  const prevBtn = document.getElementById("dt_prev");
+  if (prevBtn) prevBtn.onclick = () => {
+    dtState.month -= 1;
+    if (dtState.month < 1) { dtState.month = 12; dtState.year -= 1; }
+    renderApp();
+  };
+  const nextBtn = document.getElementById("dt_next");
+  if (nextBtn) nextBtn.onclick = () => {
+    dtState.month += 1;
+    if (dtState.month > 12) { dtState.month = 1; dtState.year += 1; }
+    renderApp();
+  };
+  const addBtn = document.getElementById("dt_add");
+  if (addBtn) addBtn.onclick = () => openDutyAssignForm(u, todayKey());
+  document.querySelectorAll("[data-dt-day]").forEach((el) => {
+    el.onclick = () => openDutyDayDetail(el.dataset.dtDay, u);
+  });
+}
+
+// Chi tiết trực nhật của 1 ngày - xem ai trực, làm việc gì, ghi chú gì
+function openDutyDayDetail(dayKey, u) {
+  const [y, m, d] = dayKey.split("-");
+  const ngayVN = `${d}/${m}/${y}`;
+  const duties = state.dutyRoster.filter((x) => !x.deleted && x.ngay === dayKey);
+  const manage = canManageDuty(u);
+
+  openSheet(`
+    <div class="sheet-title">Trực nhật ngày ${ngayVN}</div>
+    <div style="max-height:50vh;overflow-y:auto;">
+      ${duties.length === 0 ? `<div class="empty">Chưa có ai được phân công trực ngày này.</div>` :
+        duties.map((duty) => {
+          const emp = state.employees.find((e) => e.id === duty.employeeId);
+          return `<div style="padding:10px 0;border-bottom:1px solid var(--line);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div><div style="font-weight:600;">${emp ? emp.hoTen : duty.employeeId}</div>
+              <div class="sub">${duty.congViec || "Trực nhật"}${duty.ghiChu ? " · " + duty.ghiChu : ""}</div></div>
+              ${manage ? `<div style="display:flex;gap:6px;">
+                <button data-dt-edit="${duty.id}" class="btn btn-outline" style="width:auto;padding:6px 10px;font-size:12px;">Sửa</button>
+                <button data-dt-del="${duty.id}" class="btn btn-red" style="width:auto;padding:6px 10px;font-size:12px;">Xoá</button>
+              </div>` : ""}
+            </div>
+          </div>`;
+        }).join("")}
+    </div>
+    ${manage ? `<button class="btn btn-primary" id="dt_addhere" style="margin-top:14px;">+ Thêm người trực ngày này</button>` : ""}
+    <button class="btn btn-outline" id="dt_detail_close" style="margin-top:8px;">Đóng</button>
+  `);
+  document.getElementById("dt_detail_close").onclick = closeSheet;
+  const addHereBtn = document.getElementById("dt_addhere");
+  if (addHereBtn) addHereBtn.onclick = () => openDutyAssignForm(u, dayKey);
+  document.querySelectorAll("[data-dt-edit]").forEach((b) => {
+    b.onclick = () => openDutyAssignForm(u, dayKey, b.dataset.dtEdit);
+  });
+  document.querySelectorAll("[data-dt-del]").forEach((b) => {
+    b.onclick = async () => {
+      const duty = state.dutyRoster.find((x) => x.id === b.dataset.dtDel);
+      if (!duty) return;
+      duty.deleted = true;
+      duty.updatedAt = nowMs();
+      saveLocal(); closeSheet(); renderApp();
+      await syncNowWithFeedback("Đã xoá phân công trực.");
+    };
+  });
+}
+
+// Form phân công trực - tạo mới hoặc sửa (nếu truyền editId)
+function openDutyAssignForm(u, dayKey, editId) {
+  const editing = editId ? state.dutyRoster.find((x) => x.id === editId) : null;
+  const empOptions = activeEmployees().map((e) => ({ value: e.id, label: e.hoTen }));
+
+  openSheet(`
+    <div class="sheet-title">${editing ? "Sửa phân công trực" : "Phân công trực"}</div>
+    <label class="sub" style="display:block;margin-bottom:4px;">Ngày trực</label>
+    ${renderCustomDate("dt_ngay", editing ? editing.ngay : dayKey)}
+    <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
+    ${empOptions.length === 0 ? `<div class="empty">Chưa có nhân viên nào.</div>` : renderCustomSelect("dt_emp", empOptions, editing ? editing.employeeId : (empOptions[0] && empOptions[0].value))}
+    <label class="sub" style="display:block;margin-bottom:4px;">Công việc</label>
+    <input class="input" id="dt_congviec" placeholder="VD: Trực văn phòng, Trực vệ sinh..." value="${editing ? editing.congViec || "" : ""}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="dt_cv_field" />
+    <label class="sub" style="display:block;margin-bottom:4px;">Ghi chú (không bắt buộc)</label>
+    <textarea class="input" id="dt_ghichu" style="min-height:60px;">${editing ? editing.ghiChu || "" : ""}</textarea>
+    <div id="dt_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="row"><button class="btn btn-outline" id="dt_cancel">Huỷ</button><button class="btn btn-primary" id="dt_save">Lưu phân công</button></div>
+  `);
+  bindCustomDate("dt_ngay");
+  if (empOptions.length > 0) bindCustomSelect("dt_emp");
+  document.getElementById("dt_cancel").onclick = closeSheet;
+  document.getElementById("dt_save").onclick = async () => {
+    const ngay = getCustomDateValue("dt_ngay");
+    const employeeId = empOptions.length > 0 ? getSelectValue("dt_emp") : "";
+    const congViec = document.getElementById("dt_congviec").value.trim();
+    const err = document.getElementById("dt_err");
+    if (!employeeId) { err.textContent = "Chưa có nhân viên để phân công."; return; }
+    if (!congViec) { err.textContent = "Vui lòng nhập công việc trực."; return; }
+
+    if (editing) {
+      editing.ngay = ngay;
+      editing.employeeId = employeeId;
+      editing.congViec = congViec;
+      editing.ghiChu = document.getElementById("dt_ghichu").value.trim();
+      editing.nguoiPhanCong = u.id;
+      editing.updatedAt = nowMs();
+    } else {
+      state.dutyRoster.push({
+        id: genId("TN"), ngay, employeeId, congViec,
+        ghiChu: document.getElementById("dt_ghichu").value.trim(),
+        nguoiPhanCong: u.id, updatedAt: nowMs(), deleted: false,
+      });
+    }
+    saveLocal(); closeSheet(); renderApp();
+    await syncNowWithFeedback(editing ? "Đã cập nhật phân công trực." : "Đã phân công trực thành công.");
+  };
+}
+
 function renderSettings(u) {
   const admin = isAdmin(u);
   const vaiTroLabel = u.vaiTro === "Admin" ? "Admin" : u.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên";
@@ -2434,6 +2632,7 @@ function bindScreenEvents(tab, u) {
   if (tab === "history") bindHistoryEvents(u);
   if (tab === "report") bindReportEvents(u);
   if (tab === "settings") bindSettingsEvents(u);
+  if (tab === "duty") bindDutyRosterEvents(u);
 }
 
 // =====================================================================
