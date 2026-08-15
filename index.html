@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-39";
+const APP_VERSION = "20260808-41";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -622,6 +622,19 @@ function mergeServerIntoLocal(serverData) {
 function scheduleSync() {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncPush, 4000);
+}
+
+// Đồng bộ NGAY LẬP TỨC sau 1 hành động "chốt" (Gửi/Lưu/Duyệt...) thay vì chờ
+// 4 giây - tránh mất dữ liệu nếu người dùng thoát/khoá máy ngay sau khi bấm.
+// Nếu thất bại, vẫn thử lại ngầm (scheduleSync) và báo rõ cho người dùng biết.
+async function syncNowWithFeedback(successMsg) {
+  const synced = await syncPush(true);
+  if (synced) {
+    if (successMsg) toast(successMsg);
+  } else {
+    scheduleSync();
+    toast("⚠️ Đã lưu trên máy nhưng CHƯA đồng bộ lên hệ thống (mất mạng?). Sẽ tự thử lại, hoặc mở lại app sau vài phút để kiểm tra.");
+  }
 }
 
 async function apiCall(method, params) {
@@ -1189,13 +1202,7 @@ function bindScreenEventsCheckin(u) {
     toast("Đã ghi nhận, đang đồng bộ...");
     // Gửi lên server NGAY LẬP TỨC (không chờ 4 giây) - tránh trường hợp người dùng
     // thoát/khoá máy ngay sau khi chấm công khiến dữ liệu chưa kịp gửi đi.
-    const synced = await syncPush(true);
-    if (synced) {
-      toast("Đã chấm công và đồng bộ thành công.");
-    } else {
-      toast("⚠️ Đã lưu trên máy nhưng CHƯA đồng bộ lên hệ thống (mất mạng?). Vui lòng mở lại app sau vài phút để kiểm tra, hoặc vào Cài đặt bấm Đồng bộ ngay.");
-      scheduleSync(); // vẫn thử lại nền, phòng khi mạng chập chờn quay lại ngay sau đó
-    }
+    await syncNowWithFeedback("Đã chấm công và đồng bộ thành công.");
   };
 }
 
@@ -1326,14 +1333,14 @@ function openEmployeeForm(u, existing) {
     document.getElementById("em_cancel").onclick = closeSheet;
 
     const deleteBtn = document.getElementById("em_delete");
-    if (deleteBtn) deleteBtn.onclick = () => {
+    if (deleteBtn) deleteBtn.onclick = async () => {
       existing.deleted = true;
       existing.updatedAt = nowMs();
-      saveLocal(); closeSheet(); renderApp(); scheduleSync();
-      toast("Đã xoá nhân viên.");
+      saveLocal(); closeSheet(); renderApp();
+      await syncNowWithFeedback("Đã xoá nhân viên và đồng bộ thành công.");
     };
 
-    document.getElementById("em_save").onclick = () => {
+    document.getElementById("em_save").onclick = async () => {
       const ma = document.getElementById("em_ma").value.trim();
       const ten = document.getElementById("em_ten").value.trim();
       const pinInput = getPinValue("em_pin");
@@ -1360,8 +1367,8 @@ function openEmployeeForm(u, existing) {
           quyen, trangThai: "DangLam", updatedAt: nowMs(), deleted: false,
         });
       }
-      saveLocal(); closeSheet(); renderApp(); scheduleSync();
-      toast(isEdit ? "Đã cập nhật nhân viên." : "Đã thêm nhân viên.");
+      saveLocal(); closeSheet(); renderApp();
+      await syncNowWithFeedback(isEdit ? "Đã cập nhật nhân viên và đồng bộ thành công." : "Đã thêm nhân viên và đồng bộ thành công.");
     };
 }
 
@@ -1589,7 +1596,7 @@ function openAnnouncementForm(u) {
   `);
   bindCustomSelect("tb_target");
   document.getElementById("tb_cancel").onclick = closeSheet;
-  document.getElementById("tb_send").onclick = () => {
+  document.getElementById("tb_send").onclick = async () => {
     const noiDung = document.getElementById("tb_content").value.trim();
     const err = document.getElementById("tb_err");
     if (!noiDung) { err.textContent = "Vui lòng nhập nội dung thông báo."; return; }
@@ -1599,8 +1606,8 @@ function openAnnouncementForm(u) {
       noiDung, doiTuong: getSelectValue("tb_target"),
       updatedAt: nowMs(), deleted: false,
     });
-    saveLocal(); closeSheet(); renderApp(); scheduleSync();
-    toast("Đã gửi thông báo.");
+    saveLocal(); closeSheet(); renderApp();
+    await syncNowWithFeedback("Đã gửi thông báo và đồng bộ thành công.");
   };
 }
 
@@ -1646,7 +1653,7 @@ function openCorrectionRequestForm(u, dayKey, existingRecord) {
   };
 
   document.getElementById("dnsc_cancel").onclick = closeSheet;
-  document.getElementById("dnsc_save").onclick = () => {
+  document.getElementById("dnsc_save").onclick = async () => {
     const ngay = getCustomDateValue("dnsc_ngay");
     const lyDo = document.getElementById("dnsc_lydo").value.trim();
     const err = document.getElementById("dnsc_err");
@@ -1657,8 +1664,8 @@ function openCorrectionRequestForm(u, dayKey, existingRecord) {
       lyDo, anhMinhChung: pendingCorrectionImage || "",
       trangThai: "ChoDuyet", nguoiDuyet: "", updatedAt: nowMs(), deleted: false,
     });
-    saveLocal(); closeSheet(); renderApp(); scheduleSync();
-    toast("Đã gửi đề nghị cập nhật công, chờ duyệt.");
+    saveLocal(); closeSheet(); renderApp();
+    await syncNowWithFeedback("Đã gửi đề nghị cập nhật công và đồng bộ thành công, chờ duyệt.");
   };
 }
 
@@ -1679,7 +1686,7 @@ function openEditRecordForm(u, recordId) {
     <div class="row"><button class="btn btn-outline" id="rec_cancel">Huỷ</button><button class="btn btn-primary" id="rec_save">Lưu</button></div>
   `);
   document.getElementById("rec_cancel").onclick = closeSheet;
-  document.getElementById("rec_save").onclick = () => {
+  document.getElementById("rec_save").onclick = async () => {
     const gv = document.getElementById("rec_gv").value.trim();
     const gr = document.getElementById("rec_gr").value.trim();
     const err = document.getElementById("rec_err");
@@ -1695,8 +1702,8 @@ function openEditRecordForm(u, recordId) {
     if (oldVals.gioVao !== rec.gioVao || oldVals.gioRa !== rec.gioRa) {
       logAuditChange(rec.employeeId, rec.dayKey, u.id, oldVals, { gioVao: rec.gioVao, gioRa: rec.gioRa }, "Sửa trực tiếp bởi " + u.hoTen, "SuaTrucTiep");
     }
-    saveLocal(); closeSheet(); renderApp(); scheduleSync();
-    toast("Đã cập nhật giờ chấm công.");
+    saveLocal(); closeSheet(); renderApp();
+    await syncNowWithFeedback("Đã cập nhật giờ chấm công.");
   };
 }
 
@@ -1971,10 +1978,10 @@ function bindReportEvents(u) {
   document.querySelectorAll("[data-report-tab]").forEach((b) => b.onclick = () => { reportViewTab = b.dataset.reportTab; renderApp(); });
   document.querySelectorAll("[data-emp-view-mode]").forEach((b) => b.onclick = () => { reportEmpViewMode = b.dataset.empViewMode; renderApp(); });
 
-  document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => decideLeave(b.dataset.approve, "DaDuyet", u));
-  document.querySelectorAll("[data-reject]").forEach((b) => b.onclick = () => decideLeave(b.dataset.reject, "TuChoi", u));
-  document.querySelectorAll("[data-approve-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.approveCor, "DaDuyet", u));
-  document.querySelectorAll("[data-reject-cor]").forEach((b) => b.onclick = () => decideCorrection(b.dataset.rejectCor, "TuChoi", u));
+  document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = async () => await decideLeave(b.dataset.approve, "DaDuyet", u));
+  document.querySelectorAll("[data-reject]").forEach((b) => b.onclick = async () => await decideLeave(b.dataset.reject, "TuChoi", u));
+  document.querySelectorAll("[data-approve-cor]").forEach((b) => b.onclick = async () => await decideCorrection(b.dataset.approveCor, "DaDuyet", u));
+  document.querySelectorAll("[data-reject-cor]").forEach((b) => b.onclick = async () => await decideCorrection(b.dataset.rejectCor, "TuChoi", u));
 
   const prevBtn = document.getElementById("rp_prev");
   if (prevBtn) prevBtn.onclick = () => {
@@ -2135,19 +2142,19 @@ function openEmployeeMonthDetail(employeeId, year, month) {
     renderApp();
   };
 }
-function decideLeave(id, trangThai, u) {
+async function decideLeave(id, trangThai, u) {
   const l = state.leaveRequests.find((x) => x.id === id);
   if (!l) return;
   const emp = state.employees.find((e) => e.id === l.employeeId);
   if (!canApproveRequest(u, emp, "duyetNghiPhep")) { toast("Bạn không có quyền duyệt đơn này."); return; }
   l.trangThai = trangThai; l.nguoiDuyet = u.id; l.updatedAt = nowMs();
-  saveLocal(); renderApp(); scheduleSync();
-  toast(trangThai === "DaDuyet" ? "Đã duyệt đơn." : "Đã từ chối đơn.");
+  saveLocal(); renderApp();
+  await syncNowWithFeedback(trangThai === "DaDuyet" ? "Đã duyệt đơn." : "Đã từ chối đơn.");
 }
 
 // Duyệt/từ chối đề nghị sửa công. Khi duyệt, tự động áp dụng giờ đề xuất
 // vào đúng bản ghi chấm công thật (tạo mới nếu ngày đó chưa có bản ghi).
-function decideCorrection(id, trangThai, u) {
+async function decideCorrection(id, trangThai, u) {
   const c = state.correctionRequests.find((x) => x.id === id);
   if (!c) return;
   const emp = state.employees.find((e) => e.id === c.employeeId);
@@ -2172,8 +2179,8 @@ function decideCorrection(id, trangThai, u) {
     logAuditChange(c.employeeId, c.ngayCanSua, u.id, oldVals, { gioVao: rec.gioVao, gioRa: rec.gioRa }, c.lyDo, "DuyetDeNghi");
   }
 
-  saveLocal(); renderApp(); scheduleSync();
-  toast(trangThai === "DaDuyet" ? "Đã duyệt và cập nhật bản ghi chấm công." : "Đã từ chối đề nghị.");
+  saveLocal(); renderApp();
+  await syncNowWithFeedback(trangThai === "DaDuyet" ? "Đã duyệt và cập nhật bản ghi chấm công." : "Đã từ chối đề nghị.");
 }
 
 // =====================================================================
@@ -2185,7 +2192,6 @@ function openLeaveForm(u) {
     <div class="sheet-title">Tạo đơn nghỉ phép</div>
     <label class="sub" style="display:block;margin-bottom:4px;">Loại nghỉ</label>
     ${renderCustomSelect("lv_loai", [
-      { value: "Nghỉ phép năm", label: "Nghỉ phép năm" },
       { value: "Nghỉ ốm", label: "Nghỉ ốm" },
       { value: "Nghỉ không lương", label: "Nghỉ không lương" },
       { value: "Nghỉ việc riêng", label: "Nghỉ việc riêng" },
@@ -2202,7 +2208,7 @@ function openLeaveForm(u) {
   bindCustomDate("lv_tu");
   bindCustomDate("lv_den");
   document.getElementById("lv_cancel").onclick = closeSheet;
-  document.getElementById("lv_save").onclick = () => {
+  document.getElementById("lv_save").onclick = async () => {
     const tu = getCustomDateValue("lv_tu"), den = getCustomDateValue("lv_den");
     const err = document.getElementById("lv_err");
     if (!tu || !den) { err.textContent = "Chọn đủ ngày bắt đầu/kết thúc."; return; }
@@ -2211,8 +2217,8 @@ function openLeaveForm(u) {
       tuNgay: tu, denNgay: den, lyDo: document.getElementById("lv_lydo").value.trim(),
       trangThai: "ChoDuyet", nguoiDuyet: "", updatedAt: nowMs(), deleted: false,
     });
-    saveLocal(); closeSheet(); renderApp(); scheduleSync();
-    toast("Đã gửi đơn nghỉ phép.");
+    saveLocal(); closeSheet(); renderApp();
+    await syncNowWithFeedback("Đã gửi đơn nghỉ phép.");
   };
 }
 
@@ -2400,7 +2406,7 @@ function bindSettingsEvents(u) {
     }
   };
   const saveCfg = document.getElementById("btnSaveConfig");
-  if (saveCfg) saveCfg.onclick = () => {
+  if (saveCfg) saveCfg.onclick = async () => {
     if (document.getElementById("cf_gps").checked && (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null)) {
       toast("Cần đặt vị trí công ty (bấm nút bên trên) trước khi bật bắt buộc GPS.");
       return;
@@ -2414,8 +2420,8 @@ function bindSettingsEvents(u) {
       viTriCongTy: state.config.viTriCongTy,
       updatedAt: nowMs(),
     };
-    saveLocal(); scheduleSync();
-    toast("Đã lưu cấu hình.");
+    saveLocal();
+    await syncNowWithFeedback("Đã lưu cấu hình.");
   };
 }
 
