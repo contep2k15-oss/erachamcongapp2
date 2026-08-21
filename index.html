@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-55";
+const APP_VERSION = "20260808-56";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -542,10 +542,10 @@ function renderCustomDate(idPrefix, initialYMD) {
     </div>
   `;
 }
-function bindCustomDate(idPrefix) {
-  bindCustomSelect(idPrefix + "_d");
-  bindCustomSelect(idPrefix + "_m");
-  bindCustomSelect(idPrefix + "_y");
+function bindCustomDate(idPrefix, onChange) {
+  bindCustomSelect(idPrefix + "_d", onChange);
+  bindCustomSelect(idPrefix + "_m", onChange);
+  bindCustomSelect(idPrefix + "_y", onChange);
 }
 function getCustomDateValue(idPrefix) {
   return `${getSelectValue(idPrefix + "_y")}-${getSelectValue(idPrefix + "_m")}-${getSelectValue(idPrefix + "_d")}`;
@@ -573,9 +573,9 @@ function renderCustomTime(idPrefix, initialHM) {
     </div>
   `;
 }
-function bindCustomTime(idPrefix) {
-  bindCustomSelect(idPrefix + "_h");
-  bindCustomSelect(idPrefix + "_m");
+function bindCustomTime(idPrefix, onChange) {
+  bindCustomSelect(idPrefix + "_h", onChange);
+  bindCustomSelect(idPrefix + "_m", onChange);
 }
 function getCustomTimeValue(idPrefix) {
   return `${getSelectValue(idPrefix + "_h")}:${getSelectValue(idPrefix + "_m")}`;
@@ -1888,25 +1888,49 @@ function openAnnouncementForm(u) {
 
 function openCorrectionRequestForm(u, dayKey, existingRecord) {
   pendingCorrectionImage = null;
+  const hasExisting = existingRecord && (existingRecord.gioVao || existingRecord.gioRa);
   openSheet(`
     <div class="sheet-title">Đề nghị cập nhật công</div>
-    <label class="sub" style="display:block;margin-bottom:4px;">Ngày cần sửa</label>
+
+    <div style="display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;font-size:12.5px;margin-bottom:10px;">📅 Ngày cần sửa</div>
     ${renderCustomDate("dnsc_ngay", dayKey)}
+
+    <div style="height:1px;background:var(--line);margin:14px 0;"></div>
+    <div style="display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;font-size:12.5px;margin-bottom:10px;">🕐 Giờ đề xuất</div>
     <label class="sub" style="display:block;margin-bottom:4px;">Giờ vào đề xuất</label>
     ${renderCustomTime("dnsc_gv", (existingRecord && existingRecord.gioVao) || state.config.gioChuan)}
     <label class="sub" style="display:block;margin-bottom:4px;">Giờ ra đề xuất</label>
     ${renderCustomTime("dnsc_gr", (existingRecord && existingRecord.gioRa) || state.config.gioRaChuan)}
-    <label class="sub" style="display:block;margin-bottom:4px;">Lý do đề nghị cập nhật</label>
+    <div style="background:#FDF3E4;border-radius:8px;padding:10px 12px;margin-bottom:16px;">
+      ${hasExisting ? `<div style="font-size:12px;color:var(--amber);margin-bottom:4px;">Hiện có: <b>${existingRecord.gioVao || "—"} → ${existingRecord.gioRa || "—"}</b></div>` : ""}
+      <div id="dnsc_compare_new" style="font-size:12px;color:var(--green);"></div>
+    </div>
+
+    <div style="height:1px;background:var(--line);margin-bottom:14px;"></div>
+    <div style="display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;font-size:12.5px;margin-bottom:10px;">📝 Lý do</div>
     <textarea class="input" id="dnsc_lydo" placeholder="VD: quên chấm công ra, máy hết pin lúc vào ca..." style="min-height:70px;"></textarea>
-    <label class="sub" style="display:block;margin-bottom:4px;">Ảnh minh chứng (không bắt buộc)</label>
-    <input type="file" accept="image/*" id="dnsc_anh" style="margin-bottom:6px;" />
+
+    <div style="height:1px;background:var(--line);margin:14px 0;"></div>
+    <div style="display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;font-size:12.5px;margin-bottom:10px;">📷 Ảnh minh chứng (không bắt buộc)</div>
+    <label for="dnsc_anh" style="border:1.5px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--sub);cursor:pointer;display:block;margin-bottom:8px;">
+      <div style="font-size:20px;">📷</div>
+      <div style="font-size:12px;margin-top:4px;">Chụp hoặc chọn ảnh</div>
+    </label>
+    <input type="file" accept="image/*" id="dnsc_anh" style="display:none;" />
     <div id="dnsc_anh_preview" style="margin-bottom:10px;"></div>
+
     <div id="dnsc_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
-    <div class="row"><button class="btn btn-outline" id="dnsc_cancel">Huỷ</button><button class="btn btn-primary" id="dnsc_save">Gửi đề nghị</button></div>
+    <div class="row"><button class="btn btn-outline" id="dnsc_cancel">Huỷ</button><button class="btn btn-primary" id="dnsc_save">📨 Gửi đề nghị</button></div>
   `);
   bindCustomDate("dnsc_ngay");
-  bindCustomTime("dnsc_gv");
-  bindCustomTime("dnsc_gr");
+
+  const updateCorrectionCompare = () => {
+    const gv = getCustomTimeValue("dnsc_gv"), gr = getCustomTimeValue("dnsc_gr");
+    document.getElementById("dnsc_compare_new").innerHTML = `Đề xuất: <b>${gv} → ${gr}</b>`;
+  };
+  bindCustomTime("dnsc_gv", updateCorrectionCompare);
+  bindCustomTime("dnsc_gr", updateCorrectionCompare);
+  updateCorrectionCompare();
 
   document.getElementById("dnsc_anh").onchange = async (e) => {
     const file = e.target.files[0];
@@ -2503,6 +2527,8 @@ async function decideCorrection(id, trangThai, u) {
 function openLeaveForm(u) {
   openSheet(`
     <div class="sheet-title">Tạo đơn nghỉ phép</div>
+
+    <div style="display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;font-size:12.5px;margin-bottom:10px;">📅 Thời gian nghỉ</div>
     <label class="sub" style="display:block;margin-bottom:4px;">Loại nghỉ</label>
     ${renderCustomSelect("lv_loai", [
       { value: "Nghỉ ốm", label: "Nghỉ ốm" },
@@ -2513,18 +2539,45 @@ function openLeaveForm(u) {
     ${renderCustomDate("lv_tu")}
     <label class="sub" style="display:block;margin-bottom:4px;">Đến ngày</label>
     ${renderCustomDate("lv_den")}
-    <textarea class="input" id="lv_lydo" placeholder="Lý do" style="min-height:70px;"></textarea>
+    <div id="lv_summary" style="background:#E7F8F0;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <span id="lv_summary_icon" style="color:var(--green);font-weight:800;">✓</span>
+      <span id="lv_summary_text" style="font-size:13px;font-weight:700;color:var(--green);"></span>
+    </div>
+
+    <div style="height:1px;background:var(--line);margin-bottom:14px;"></div>
+    <div style="display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;font-size:12.5px;margin-bottom:10px;">📝 Lý do</div>
+    <textarea class="input" id="lv_lydo" placeholder="VD: Sốt cao, đã đi khám bác sĩ..." style="min-height:70px;"></textarea>
+
     <div id="lv_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
-    <div class="row"><button class="btn btn-outline" id="lv_cancel">Huỷ</button><button class="btn btn-primary" id="lv_save">Gửi đơn</button></div>
+    <div class="row"><button class="btn btn-outline" id="lv_cancel">Huỷ</button><button class="btn btn-primary" id="lv_save">📨 Gửi đơn</button></div>
   `);
   bindCustomSelect("lv_loai");
-  bindCustomDate("lv_tu");
-  bindCustomDate("lv_den");
+
+  const updateLeaveSummary = () => {
+    const tu = getCustomDateValue("lv_tu"), den = getCustomDateValue("lv_den");
+    const box = document.getElementById("lv_summary");
+    const icon = document.getElementById("lv_summary_icon");
+    const text = document.getElementById("lv_summary_text");
+    const start = new Date(tu + "T00:00:00"), end = new Date(den + "T00:00:00");
+    const days = Math.round((end - start) / 86400000) + 1;
+    if (days <= 0) {
+      box.style.background = "#FBEAEA"; icon.style.color = "var(--red)"; icon.textContent = "!";
+      text.style.color = "var(--red)"; text.textContent = "Từ ngày phải trước hoặc bằng Đến ngày";
+    } else {
+      box.style.background = "#E7F8F0"; icon.style.color = "var(--green)"; icon.textContent = "✓";
+      text.style.color = "var(--green)"; text.textContent = `Tổng: ${days} ngày nghỉ`;
+    }
+  };
+  bindCustomDate("lv_tu", updateLeaveSummary);
+  bindCustomDate("lv_den", updateLeaveSummary);
+  updateLeaveSummary();
+
   document.getElementById("lv_cancel").onclick = closeSheet;
   document.getElementById("lv_save").onclick = async () => {
     const tu = getCustomDateValue("lv_tu"), den = getCustomDateValue("lv_den");
     const err = document.getElementById("lv_err");
     if (!tu || !den) { err.textContent = "Chọn đủ ngày bắt đầu/kết thúc."; return; }
+    if (tu > den) { err.textContent = "Từ ngày phải trước hoặc bằng Đến ngày."; return; }
     state.leaveRequests.push({
       id: genId("DN"), employeeId: u.id, loaiNghi: getSelectValue("lv_loai"),
       tuNgay: tu, denNgay: den, lyDo: document.getElementById("lv_lydo").value.trim(),
