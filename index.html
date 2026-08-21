@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-52";
+const APP_VERSION = "20260808-53";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1349,9 +1349,9 @@ function renderCheckin(u) {
         <span>Số ngày nghỉ</span><span style="display:flex;align-items:center;gap:4px;"><b>${stats.soNgayNghi}</b><span class="sub">›</span></span>
       </div>
       <div id="dt_canhbao_row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;">
-        <span>⚠️ Cảnh báo vi phạm</span>
+        <span>⚠️ Vi phạm</span>
         <span style="display:flex;align-items:center;gap:4px;">
-          <b style="color:${violationWarnings.length > 0 ? "var(--red)" : "var(--green)"};">${violationWarnings.length > 0 ? `${violationWarnings.length} cảnh báo · ${fmtVND(deductions.tongTienPhat)}` : "Không có"}</b>
+          <b style="color:${violationWarnings.length > 0 ? "var(--red)" : "var(--green)"};">${violationWarnings.length > 0 ? fmtVND(deductions.tongTienPhat) : "Không có"}</b>
           <span class="sub">›</span>
         </span>
       </div>
