@@ -171,7 +171,7 @@ document.addEventListener("touchend", (e) => {
 // cách khác). Bảo mật DỮ LIỆU thật sự nằm ở lớp session token phía dưới.
 // =====================================================================
 console.log("%c⚠ Dừng lại!", "color:#E5484D;font-size:26px;font-weight:800;");
-console.log("%cĐây là công cụ dành cho lập trình viên. Không dán bất kỳ đoạn mã nào vào đây theo hướng dẫn của người lạ - có thể bị chiếm quyền tài khoản/dữ liệu công ty.", "font-size:14px;");
+console.log("%cĐây là công cụ dành cho lập trình viên. Không dán bất kỳ đoạn mã nào vào đây theo hướng dẫn của người lạ - có thể bị chiếm quyền tài khoản/dữ liệu Studio.", "font-size:14px;");
 document.addEventListener("keydown", (e) => {
   const k = e.key ? e.key.toLowerCase() : "";
   const blockCombo =
@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-43";
+const APP_VERSION = "20260808-45";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -197,7 +197,17 @@ const SESSION_KEY = "cc_session_v1";
 let state = loadLocal() || {
   employees: [], records: [], leaveRequests: [], correctionRequests: [], auditLog: [], announcements: [], dutyRoster: [], dutyPattern: [],
   shifts: [{ id: "CA1", tenCa: "Ca hành chính", gioBatDau: "08:00", gioKetThuc: "17:30", updatedAt: 0, deleted: false }],
-  config: { gioChuan: "08:00", gioRaChuan: "17:30", soPhutChoPhepTre: 10, batBuocGPS: false, banKinhGPS: 300, viTriCongTy: { lat: null, lng: null }, updatedAt: 0 },
+  config: {
+    gioChuan: "08:00", gioRaChuan: "17:30", soPhutChoPhepTre: 10, batBuocGPS: false, banKinhGPS: 300, viTriCongTy: { lat: null, lng: null },
+    // ---- Cấu hình trừ tiền theo quy chế (Admin chỉnh được trong Quản trị) ----
+    soPhutMienTruTreNV: 30, soPhutMienTruTreQL: 60, // miễn trừ HOÀN TOÀN - trong mức này không tính là 1 lần đi muộn
+    mucPhatGioTreNV: 20000, mucPhatGioTreQL: 30000, // đồng/giờ trễ (sau khi trừ phần miễn trừ)
+    mucPhatNghiKhongPhepNV: 150000, mucPhatNghiKhongPhepQL: 200000, // đồng/lần
+    soNgayNghiPhepMienPhi: 2, // ngày nghỉ phép miễn phí/tháng, từ ngày tiếp theo bắt đầu tính phí
+    mucPhatNghiPhepVuotNV: 80000, mucPhatNghiPhepVuotQL: 100000, // đồng/ngày vượt mức
+    ngayNghiTrongTuan: 0, // 0=Chủ Nhật (theo Date.getDay()) - ngày này không tính "nghỉ không phép"
+    updatedAt: 0,
+  },
 };
 // Đảm bảo dữ liệu cũ (state đã lưu từ trước, chưa có trường mới) không bị lỗi
 if (!state.correctionRequests) state.correctionRequests = [];
@@ -205,6 +215,18 @@ if (!state.auditLog) state.auditLog = [];
 if (!state.announcements) state.announcements = [];
 if (!state.dutyRoster) state.dutyRoster = [];
 if (!state.dutyPattern) state.dutyPattern = [];
+// Vá thêm các trường cấu hình mới cho state cũ đã lưu trước khi có tính năng trừ tiền
+(function patchConfigDefaults() {
+  const defaults = {
+    soPhutMienTruTreNV: 30, soPhutMienTruTreQL: 60,
+    mucPhatGioTreNV: 20000, mucPhatGioTreQL: 30000,
+    mucPhatNghiKhongPhepNV: 150000, mucPhatNghiKhongPhepQL: 200000,
+    soNgayNghiPhepMienPhi: 2,
+    mucPhatNghiPhepVuotNV: 80000, mucPhatNghiPhepVuotQL: 100000,
+    ngayNghiTrongTuan: 0,
+  };
+  Object.keys(defaults).forEach((k) => { if (state.config[k] === undefined) state.config[k] = defaults[k]; });
+})();
 let session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); // {employeeId}
 let currentTab = "checkin";
 let syncTimer = null;
@@ -1027,20 +1049,25 @@ function myTodayRecord(u) {
 
 // So sánh giờ vào thực tế với Giờ vào chuẩn + Số phút cho phép trễ (trong Cài đặt).
 // Trả về true nếu đi trễ vượt quá mức cho phép.
-function isLate(gioVaoStr) {
+// Mức miễn trừ đi muộn/về sớm theo vai trò - Quản lý/Admin được miễn trừ nhiều hơn Nhân viên
+function graceMinutesFor(vaiTro) {
+  return (vaiTro === "QuanLy" || vaiTro === "Admin") ? (Number(state.config.soPhutMienTruTreQL) || 60) : (Number(state.config.soPhutMienTruTreNV) || 30);
+}
+
+function isLate(gioVaoStr, vaiTro) {
   if (!gioVaoStr || !state.config.gioChuan) return false;
   const toMin = (s) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
   const actual = toMin(gioVaoStr);
-  const allowed = toMin(state.config.gioChuan) + (Number(state.config.soPhutChoPhepTre) || 0);
+  const allowed = toMin(state.config.gioChuan) + graceMinutesFor(vaiTro);
   return actual > allowed;
 }
 
 // So sánh giờ ra thực tế với Giờ ra chuẩn - về sớm nếu ra trước quá mức cho phép
-function isEarlyLeave(gioRaStr) {
+function isEarlyLeave(gioRaStr, vaiTro) {
   if (!gioRaStr || !state.config.gioRaChuan) return false;
   const toMin = (s) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
   const actual = toMin(gioRaStr);
-  const allowed = toMin(state.config.gioRaChuan) - (Number(state.config.soPhutChoPhepTre) || 0);
+  const allowed = toMin(state.config.gioRaChuan) - graceMinutesFor(vaiTro);
   return actual < allowed;
 }
 
@@ -1055,12 +1082,13 @@ function overtimeHours(record) {
 // Tính 4 chỉ số tổng quan tháng cho 1 nhân viên: tổng công, giờ làm thêm, số lần trễ/sớm, số ngày nghỉ
 function computeMonthStats(employeeId, year, month) {
   const prefix = `${year}-${String(month).padStart(2, "0")}`;
+  const empVaiTro = (state.employees.find((e) => e.id === employeeId) || {}).vaiTro;
   const monthRecords = state.records.filter((r) => !r.deleted && r.employeeId === employeeId && r.dayKey && r.dayKey.startsWith(prefix));
   let tongCong = 0, tongGioLamThem = 0, soLanTreSom = 0;
   monthRecords.forEach((r) => {
     if (r.gioVao) tongCong += 1;
     tongGioLamThem += overtimeHours(r);
-    if ((r.gioVao && isLate(r.gioVao)) || (r.gioRa && isEarlyLeave(r.gioRa))) soLanTreSom += 1;
+    if ((r.gioVao && isLate(r.gioVao, empVaiTro)) || (r.gioRa && isEarlyLeave(r.gioRa, empVaiTro))) soLanTreSom += 1;
   });
   const soNgayNghi = state.leaveRequests
     .filter((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet")
@@ -1081,11 +1109,120 @@ function daysInLeaveWithinMonth(leave, year, month) {
   return Math.round((to - from) / 86400000) + 1;
 }
 
+// =====================================================================
+// TÍNH TIỀN TRỪ THEO QUY CHẾ - đi muộn/về sớm, nghỉ không phép, nghỉ phép
+// vượt mức. Chỉ để THAM KHẢO, Admin xác nhận trước khi trừ lương thật.
+// =====================================================================
+
+// Đếm số lần nghỉ KHÔNG PHÉP trong tháng: ngày làm việc (không phải ngày nghỉ
+// hàng tuần), không có chấm công, không có đơn nghỉ phép đã duyệt che ngày đó.
+// Chỉ xét đến hôm nay - không tính ngày tương lai (chưa tới thì chưa biết được).
+function countUnauthorizedAbsences(employeeId, year, month) {
+  const todayK = nowVNDayKey();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const offDay = Number(state.config.ngayNghiTrongTuan);
+  let count = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayKey = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (dayKey > todayK) break;
+    const dateObj = new Date(year, month - 1, d);
+    if (dateObj.getDay() === offDay) continue;
+    const rec = state.records.find((r) => !r.deleted && r.employeeId === employeeId && r.dayKey === dayKey && r.gioVao);
+    if (rec) continue;
+    const leave = state.leaveRequests.find((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet" && l.tuNgay <= dayKey && l.denNgay >= dayKey);
+    if (leave) continue;
+    count++;
+  }
+  return count;
+}
+
+// Tính chi tiết số tiền bị trừ trong tháng cho 1 nhân viên, theo đúng quy chế.
+function computeMonthDeductions(employeeId, year, month) {
+  const emp = state.employees.find((e) => e.id === employeeId);
+  const vaiTro = emp ? emp.vaiTro : "NhanVien";
+  const isManager = vaiTro === "QuanLy" || vaiTro === "Admin";
+  const cfg = state.config;
+  const prefix = `${year}-${String(month).padStart(2, "0")}`;
+  const monthRecords = state.records.filter((r) => !r.deleted && r.employeeId === employeeId && r.dayKey && r.dayKey.startsWith(prefix));
+  const toMin = (s) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const graceMin = graceMinutesFor(vaiTro);
+  const rateGio = isManager ? Number(cfg.mucPhatGioTreQL) : Number(cfg.mucPhatGioTreNV);
+
+  let soLanTre = 0, soLanSom = 0, tienPhatTreSom = 0;
+  monthRecords.forEach((r) => {
+    if (r.gioVao && isLate(r.gioVao, vaiTro)) {
+      soLanTre++;
+      const phutVuot = toMin(r.gioVao) - (toMin(cfg.gioChuan) + graceMin);
+      tienPhatTreSom += (phutVuot / 60) * rateGio;
+    }
+    if (r.gioRa && isEarlyLeave(r.gioRa, vaiTro)) {
+      soLanSom++;
+      const phutVuot = (toMin(cfg.gioRaChuan) - graceMin) - toMin(r.gioRa);
+      tienPhatTreSom += (phutVuot / 60) * rateGio;
+    }
+  });
+
+  // Phạt bổ sung theo mốc số lần đi muộn/tháng (Điều 2.4/2.5 cho NV, Điều 16.1 cho QL)
+  let tienPhatMoc = 0;
+  if (isManager) {
+    if (soLanTre > 5) tienPhatMoc = 300000;
+  } else {
+    if (soLanTre >= 10) tienPhatMoc = 500000;
+    else if (soLanTre >= 8) tienPhatMoc = 200000;
+  }
+
+  const soLanNghiKhongPhep = countUnauthorizedAbsences(employeeId, year, month);
+  const rateNghiKhongPhep = isManager ? Number(cfg.mucPhatNghiKhongPhepQL) : Number(cfg.mucPhatNghiKhongPhepNV);
+  const tienPhatNghiKhongPhep = soLanNghiKhongPhep * rateNghiKhongPhep;
+
+  const soNgayNghiPhep = state.leaveRequests
+    .filter((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet")
+    .reduce((sum, l) => sum + daysInLeaveWithinMonth(l, year, month), 0);
+  const soNgayVuotMuc = Math.max(0, soNgayNghiPhep - Number(cfg.soNgayNghiPhepMienPhi));
+  const rateNghiPhepVuot = isManager ? Number(cfg.mucPhatNghiPhepVuotQL) : Number(cfg.mucPhatNghiPhepVuotNV);
+  const tienPhatNghiPhepVuot = soNgayVuotMuc * rateNghiPhepVuot;
+
+  const tongTienPhat = Math.round(tienPhatTreSom) + tienPhatMoc + tienPhatNghiKhongPhep + tienPhatNghiPhepVuot;
+
+  return {
+    vaiTro, soLanTre, soLanSom, tienPhatTreSom: Math.round(tienPhatTreSom), tienPhatMoc,
+    soLanNghiKhongPhep, tienPhatNghiKhongPhep, soNgayNghiPhep, soNgayVuotMuc, tienPhatNghiPhepVuot,
+    tongTienPhat,
+  };
+}
+
+// Sinh danh sách cảnh báo vi phạm (mức 1=nhắc nhở, 2=phạt, 3=nghiêm trọng) cho 1 người/tháng
+function computeViolationWarnings(employeeId, year, month) {
+  const emp = state.employees.find((e) => e.id === employeeId);
+  if (!emp) return [];
+  const isManager = emp.vaiTro === "QuanLy" || emp.vaiTro === "Admin";
+  const ded = computeMonthDeductions(employeeId, year, month);
+  const warnings = [];
+
+  if (isManager) {
+    if (ded.soLanTre > 5) warnings.push({ level: 2, text: `Đi muộn ${ded.soLanTre} lần tháng này — vượt mức áp dụng phạt dành cho Quản lý (trên 5 lần).` });
+    else if (ded.soLanTre >= 3) warnings.push({ level: 1, text: `Đi muộn ${ded.soLanTre} lần tháng này — mức nhắc nhở dành cho Quản lý.` });
+  } else {
+    if (ded.soLanTre >= 10) warnings.push({ level: 3, text: `Đi muộn ${ded.soLanTre} lần tháng này — mức vi phạm nghiêm trọng theo quy chế.` });
+    else if (ded.soLanTre >= 8) warnings.push({ level: 2, text: `Đi muộn ${ded.soLanTre} lần tháng này — đã vượt mức phạt bổ sung theo quy chế.` });
+    else if (ded.soLanTre >= 5) warnings.push({ level: 1, text: `Đi muộn ${ded.soLanTre} lần tháng này — mức nhắc nhở theo quy chế.` });
+  }
+
+  if (!isManager && ded.soLanNghiKhongPhep >= 5) warnings.push({ level: 3, text: `Nghỉ không phép ${ded.soLanNghiKhongPhep} lần tháng này — mức vi phạm nghiêm trọng, có thể bị xem xét chấm dứt hợp tác.` });
+  else if (ded.soLanNghiKhongPhep >= 3) warnings.push({ level: 1, text: `Nghỉ không phép ${ded.soLanNghiKhongPhep} lần tháng này — mức nhắc nhở theo quy chế.` });
+
+  if (ded.soNgayVuotMuc > 0) warnings.push({ level: 1, text: `Nghỉ phép ${ded.soNgayNghiPhep} ngày tháng này, vượt mức ${state.config.soNgayNghiPhepMienPhi} ngày miễn phí — các ngày vượt sẽ bị trừ theo quy định.` });
+
+  return warnings;
+}
+
+function fmtVND(n) { return Math.round(n).toLocaleString("vi-VN") + "đ"; }
+
 function renderCheckin(u) {
   const rec = myTodayRecord(u);
   const checkedIn = rec && rec.gioVao && !rec.gioRa;
   const done = rec && rec.gioVao && rec.gioRa;
-  const late = rec && rec.gioVao && isLate(rec.gioVao);
+  const late = rec && rec.gioVao && isLate(rec.gioVao, u.vaiTro);
   const timeStr = nowVNTimeStr();
   const dateStr = nowVNWeekdayLong();
 
@@ -1095,6 +1232,9 @@ function renderCheckin(u) {
 
   const p = nowVNParts();
   const stats = computeMonthStats(u.id, Number(p.year), Number(p.month));
+  const violationWarnings = computeViolationWarnings(u.id, Number(p.year), Number(p.month));
+  const deductions = computeMonthDeductions(u.id, Number(p.year), Number(p.month));
+  const maxLevel = violationWarnings.reduce((m, w) => Math.max(m, w.level), 0);
   const lastRecord = [...state.records].filter((r) => !r.deleted && r.employeeId === u.id && r.gioVao)
     .sort((a, b) => (a.dayKey + (a.gioVao || "") < b.dayKey + (b.gioVao || "") ? 1 : -1))[0];
   const unread = unreadNotifCount(u);
@@ -1142,6 +1282,19 @@ function renderCheckin(u) {
         <span>Số ngày nghỉ</span><span style="display:flex;align-items:center;gap:4px;"><b>${stats.soNgayNghi}</b><span class="sub">›</span></span>
       </div>
     </div>
+
+    ${violationWarnings.length > 0 ? `
+    <div class="card" style="border:1px solid ${maxLevel === 3 ? "#F5C2C2" : maxLevel === 2 ? "#F5D9A8" : "#F5E7A8"};">
+      <div style="font-weight:700;margin-bottom:8px;">⚠️ Cảnh báo vi phạm quy chế — Tháng ${Number(p.month)}/${p.year}</div>
+      ${violationWarnings.map((w) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;">
+        <span>${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : "🟡"}</span>
+        <span style="font-size:13px;">${w.text}</span>
+      </div>`).join("")}
+      ${deductions.tongTienPhat > 0 ? `<div style="padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+        <span class="sub">Ước tính bị trừ tháng này</span><span style="font-weight:800;color:var(--red);">${fmtVND(deductions.tongTienPhat)}</span>
+      </div>
+      <div class="sub" style="margin-top:4px;font-style:italic;">Số liệu tham khảo — Admin xác nhận trước khi trừ lương thật.</div>` : ""}
+    </div>` : ""}
   </div>`;
 }
 
@@ -1174,9 +1327,9 @@ function bindScreenEventsCheckin(u) {
     const loc = await getLocation();
 
     if (state.config.batBuocGPS) {
-      // Admin chưa đặt vị trí công ty -> chặn tuyệt đối, không cho chấm công
+      // Admin chưa đặt vị trí Studio -> chặn tuyệt đối, không cho chấm công
       if (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null) {
-        msg.textContent = "Chưa cấu hình vị trí công ty. Liên hệ Admin để cài đặt trước khi chấm công.";
+        msg.textContent = "Chưa cấu hình vị trí Studio. Liên hệ Admin để cài đặt trước khi chấm công.";
         btn.disabled = false; return;
       }
       // Không lấy được vị trí (từ chối quyền, thiết bị không hỗ trợ...) -> chặn
@@ -1186,7 +1339,7 @@ function bindScreenEventsCheckin(u) {
       }
       const d = distMeters(loc, state.config.viTriCongTy);
       if (d != null && d > state.config.banKinhGPS) {
-        msg.textContent = `Bạn đang cách văn phòng ${Math.round(d)}m (cho phép tối đa ${state.config.banKinhGPS}m). Cần đến đúng vị trí công ty để chấm công.`;
+        msg.textContent = `Bạn đang cách Studio ${Math.round(d)}m (cho phép tối đa ${state.config.banKinhGPS}m). Cần đến đúng vị trí Studio để chấm công.`;
         btn.disabled = false; return;
       }
       msg.textContent = "";
@@ -1230,13 +1383,13 @@ function openStatDetail(kind, u, year, month) {
         <span>${r.ngay}</span><span style="color:var(--primary);font-weight:600;">+${overtimeHours(r).toFixed(1)}h (ra lúc ${r.gioRa})</span></div>`).join("");
   } else if (kind === "treSom") {
     title = "Chi tiết đi muộn / về sớm";
-    const days = stats.records.filter((r) => (r.gioVao && isLate(r.gioVao)) || (r.gioRa && isEarlyLeave(r.gioRa)))
+    const days = stats.records.filter((r) => (r.gioVao && isLate(r.gioVao, u.vaiTro)) || (r.gioRa && isEarlyLeave(r.gioRa, u.vaiTro)))
       .sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
     rowsHtml = days.length === 0 ? `<div class="empty">Không có lần đi muộn/về sớm nào.</div>` :
       days.map((r) => {
         const reasons = [];
-        if (r.gioVao && isLate(r.gioVao)) reasons.push(`Đi muộn (vào ${r.gioVao})`);
-        if (r.gioRa && isEarlyLeave(r.gioRa)) reasons.push(`Về sớm (ra ${r.gioRa})`);
+        if (r.gioVao && isLate(r.gioVao, u.vaiTro)) reasons.push(`Đi muộn (vào ${r.gioVao})`);
+        if (r.gioRa && isEarlyLeave(r.gioRa, u.vaiTro)) reasons.push(`Về sớm (ra ${r.gioRa})`);
         return `<div style="padding:10px 0;border-bottom:1px solid var(--line);">
           <div style="display:flex;justify-content:space-between;"><span>${r.ngay}</span></div>
           <div class="sub" style="color:var(--amber);">${reasons.join(" · ")}</div></div>`;
@@ -1451,11 +1604,11 @@ function renderHistory(u) {
       <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:18px;font-weight:800;color:var(--red);">${stats.soNgayNghi}</div><div class="sub" style="font-size:11px;">Ngày nghỉ</div></div>
     </div>
 
-    ${bcState.mode === "calendar" ? renderBcCalendar(bcState.year, bcState.month, recMap) : renderBcList(stats.records)}
+    ${bcState.mode === "calendar" ? renderBcCalendar(bcState.year, bcState.month, recMap, viewEmp.vaiTro) : renderBcList(stats.records, viewEmp.vaiTro)}
   </div>`;
 }
 
-function renderBcCalendar(year, month, recMap) {
+function renderBcCalendar(year, month, recMap, vaiTro) {
   const firstDay = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstWeekday = (firstDay.getDay() + 6) % 7; // 0=T2 ... 6=CN
@@ -1476,7 +1629,7 @@ function renderBcCalendar(year, month, recMap) {
     const rec = recMap[dayKey];
     let bg = "transparent", color = "var(--ink)";
     if (rec && rec.gioVao) {
-      const late = isLate(rec.gioVao) || (rec.gioRa && isEarlyLeave(rec.gioRa));
+      const late = isLate(rec.gioVao, vaiTro) || (rec.gioRa && isEarlyLeave(rec.gioRa, vaiTro));
       bg = late ? "#FDF3E4" : "#E7F8F0";
       color = late ? "var(--amber)" : "var(--green)";
     }
@@ -1487,12 +1640,12 @@ function renderBcCalendar(year, month, recMap) {
   return html;
 }
 
-function renderBcList(records) {
+function renderBcList(records, vaiTro) {
   const sorted = [...records].sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
   if (sorted.length === 0) return `<div class="card"><div class="empty">Chưa có dữ liệu tháng này.</div></div>`;
   return `<div class="card" style="padding:0;overflow:hidden;">
     ${sorted.map((r) => {
-      const late = (r.gioVao && isLate(r.gioVao)) || (r.gioRa && isEarlyLeave(r.gioRa));
+      const late = (r.gioVao && isLate(r.gioVao, vaiTro)) || (r.gioRa && isEarlyLeave(r.gioRa, vaiTro));
       return `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-bcday="${r.dayKey}">
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;">${r.ngay} ${late ? '<span class="pill" style="background:#FDF3E4;color:var(--amber);margin-left:6px;">Trễ/Sớm</span>' : ""}</div>
@@ -1542,10 +1695,16 @@ function openDayDetail(dayKey, employeeId, currentUser, canEdit) {
     .filter((c) => !c.deleted && c.employeeId === employeeId && c.ngayCanSua === dayKey)
     .sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
+  // Quản lý (không phải Admin) KHÔNG được sửa trực tiếp công của chính mình
+  // hoặc của Quản lý khác - bắt buộc phải qua "Đề nghị cập nhật công" để Admin duyệt.
+  const targetIsSelfOrManager = emp && (emp.id === currentUser.id || emp.vaiTro === "QuanLy" || emp.vaiTro === "Admin");
+  const blockedByHierarchy = canEdit && targetIsSelfOrManager && !isAdmin(currentUser);
+  const canEditDirectly = canEdit && (isAdmin(currentUser) || !targetIsSelfOrManager);
+
   let statusText = "Chưa chấm công", statusColor = "var(--sub)";
   if (leave) { statusText = "Nghỉ (" + leave.loaiNghi + ")"; statusColor = "var(--red)"; }
   else if (rec && rec.gioVao && rec.gioRa) {
-    const late = isLate(rec.gioVao) || isEarlyLeave(rec.gioRa);
+    const late = isLate(rec.gioVao, emp && emp.vaiTro) || isEarlyLeave(rec.gioRa, emp && emp.vaiTro);
     statusText = late ? "Đi làm (đi muộn/về sớm)" : "Đi làm — Đủ công";
     statusColor = late ? "var(--amber)" : "var(--green)";
   } else if (rec && rec.gioVao) {
@@ -1563,6 +1722,7 @@ function openDayDetail(dayKey, employeeId, currentUser, canEdit) {
       <div style="display:flex;justify-content:space-between;padding:8px 0;${rec.ghiChu ? "border-bottom:1px solid var(--line);" : ""}"><span class="sub">Giờ làm thêm</span><span style="font-weight:700;color:var(--green);">${ot > 0 ? "+" + ot.toFixed(1) + "h" : "—"}</span></div>
       ${rec.ghiChu ? `<div style="padding:8px 0;"><div class="sub">Ghi chú</div><div>${rec.ghiChu}</div></div>` : ""}
     ` : `<div class="empty">${leave ? "" : "Chưa có dữ liệu chấm công ngày này."}</div>`}
+    ${blockedByHierarchy ? `<div class="sub" style="margin-top:8px;font-style:italic;color:var(--amber);">Bạn là Quản lý — không thể tự sửa công của chính mình hoặc Quản lý khác. Vui lòng dùng "Đề nghị cập nhật công" để Admin duyệt.</div>` : ""}
     ${existingRequest ? `<div style="margin-top:10px;padding:10px;background:#F3F5F9;border-radius:10px;">
       <div class="sub" style="margin-bottom:4px;">Đề nghị gần nhất cho ngày này:</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1573,7 +1733,7 @@ function openDayDetail(dayKey, employeeId, currentUser, canEdit) {
     </div>` : ""}
     <div class="row" style="margin-top:14px;">
       <button class="btn btn-outline" id="dd_close">Đóng</button>
-      ${rec && canEdit ? `<button class="btn btn-primary" id="dd_edit">Sửa</button>` : ""}
+      ${rec && canEditDirectly ? `<button class="btn btn-primary" id="dd_edit">Sửa</button>` : ""}
     </div>
     ${isOwnDay ? `<button class="btn btn-outline" id="dd_request" style="margin-top:8px;">Đề nghị cập nhật công</button>` : ""}
   `);
@@ -1680,6 +1840,11 @@ function openEditRecordForm(u, recordId) {
   const rec = state.records.find((r) => r.id === recordId);
   if (!rec) return;
   const emp = state.employees.find((e) => e.id === rec.employeeId);
+  const targetIsSelfOrManager = emp && (emp.id === u.id || emp.vaiTro === "QuanLy" || emp.vaiTro === "Admin");
+  if (targetIsSelfOrManager && !isAdmin(u)) {
+    toast("Bạn là Quản lý — không thể tự sửa công của chính mình hoặc Quản lý khác. Dùng \"Đề nghị cập nhật công\" để Admin duyệt.");
+    return;
+  }
   openSheet(`
     <div class="sheet-title">Sửa giờ chấm công — ${emp ? emp.hoTen : rec.employeeId}</div>
     <div class="sub" style="margin-bottom:10px;">Ngày: ${rec.ngay}</div>
@@ -1731,7 +1896,7 @@ let reportEmpViewMode = "thang"; // "thang" | "toanthoigian" - áp dụng riêng
 
 function renderReport(u) {
   ensureReportMonthState();
-  // Quyền XEM BÁO CÁO TỔNG HỢP (tổng quan công ty, chi tiết từng người) phải do
+  // Quyền XEM BÁO CÁO TỔNG HỢP (tổng quan Studio, chi tiết từng người) phải do
   // Admin cấp riêng ("xemBaoCao") - KHÔNG tự động có chỉ vì được quyền duyệt đơn.
   // Quyền duyệt đơn nghỉ phép / đề nghị sửa công chỉ cho thấy đúng phần đơn cần duyệt của họ.
   const canViewFullReport = isAdmin(u) || hasPerm(u, "xemBaoCao");
@@ -1740,7 +1905,7 @@ function renderReport(u) {
   const canViewCanDuyetTab = canViewLeaveSection || canViewCorrectionSection;
 
   const availableTabs = [
-    ...(canViewFullReport ? [{ key: "homnay", label: "Hôm nay" }, { key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }] : []),
+    ...(canViewFullReport ? [{ key: "homnay", label: "Hôm nay" }, { key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }, { key: "vipham", label: "Vi phạm" }] : []),
     ...(canViewCanDuyetTab ? [{ key: "canduyet", label: "Cần duyệt" }] : []),
   ];
   if (!reportViewTab || !availableTabs.find((t) => t.key === reportViewTab)) {
@@ -1755,6 +1920,7 @@ function renderReport(u) {
   if (reportViewTab === "homnay") bodyHtml = renderReportHomNay();
   else if (reportViewTab === "tongquan") bodyHtml = renderReportTongQuan();
   else if (reportViewTab === "theonhanvien") bodyHtml = renderReportTheoNhanVien();
+  else if (reportViewTab === "vipham") bodyHtml = renderReportViPham();
   else if (reportViewTab === "canduyet") bodyHtml = renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeaveSection, canViewCorrectionSection);
   else bodyHtml = `<div class="empty">Bạn chưa được cấp quyền xem báo cáo hoặc duyệt đơn nào. Liên hệ Admin để được cấp quyền.</div>`;
 
@@ -1769,7 +1935,7 @@ function renderReport(u) {
   </div>`;
 }
 
-// ---- TAB 1: TỔNG QUAN - số liệu cấp công ty theo tháng ----
+// ---- TAB 1: TỔNG QUAN - số liệu cấp Studio theo tháng ----
 // ---- TAB "HÔM NAY" - trạng thái chấm công của toàn bộ nhân viên trong ngày hôm nay ----
 function computeTodayStatus(emp) {
   const dayKey = todayKey();
@@ -1780,12 +1946,12 @@ function computeTodayStatus(emp) {
   if (leave) {
     status = "nghiPhep"; label = "Nghỉ phép"; bg = "#F3F5F9"; color = "var(--sub)";
   } else if (rec && rec.gioVao && rec.gioRa) {
-    const late = isLate(rec.gioVao) || isEarlyLeave(rec.gioRa);
+    const late = isLate(rec.gioVao, emp.vaiTro) || isEarlyLeave(rec.gioRa, emp.vaiTro);
     status = late ? "hoanTatTre" : "hoanTat";
     label = late ? "Hoàn tất (trễ/sớm)" : "Hoàn tất";
     bg = late ? "#FDF3E4" : "#E7F8F0"; color = late ? "var(--amber)" : "var(--green)";
   } else if (rec && rec.gioVao) {
-    const late = isLate(rec.gioVao);
+    const late = isLate(rec.gioVao, emp.vaiTro);
     status = late ? "dangLamTre" : "dangLam";
     label = late ? "Đang làm (trễ)" : "Đang làm";
     bg = late ? "#FDF3E4" : "#E9F1FF"; color = late ? "var(--amber)" : "var(--primary)";
@@ -1826,6 +1992,46 @@ function renderReportHomNay() {
             <div class="sub">${r.emp.phongBan || ""} · ${r.rec ? `${r.rec.gioVao || "—"} → ${r.rec.gioRa || "—"}` : "—"}</div>
           </div>
           <span class="pill" style="background:${r.bg};color:${r.color};">${r.label}</span>
+        </div>`).join("")}
+    </div>
+  `;
+}
+
+// ---- TAB "VI PHẠM" - cảnh báo vi phạm quy chế + ước tính trừ tiền toàn bộ nhân viên ----
+function renderReportViPham() {
+  const rows = activeEmployees().map((emp) => {
+    const warnings = computeViolationWarnings(emp.id, reportMonthState.year, reportMonthState.month);
+    const ded = computeMonthDeductions(emp.id, reportMonthState.year, reportMonthState.month);
+    const maxLevel = warnings.reduce((m, w) => Math.max(m, w.level), 0);
+    return { emp, warnings, ded, maxLevel };
+  }).filter((r) => r.warnings.length > 0).sort((a, b) => b.maxLevel - a.maxLevel || b.ded.tongTienPhat - a.ded.tongTienPhat);
+
+  const tongTatCa = rows.reduce((sum, r) => sum + r.ded.tongTienPhat, 0);
+
+  return `
+    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
+        <div style="font-weight:700;">Vi phạm — Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
+        <button type="button" class="btn btn-outline" id="rp_next" style="width:auto;padding:8px 14px;">›</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:12px;">
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${rows.length > 0 ? "var(--amber)" : "var(--ink)"};">${rows.length}</div><div class="sub" style="font-size:11px;">Người đang vi phạm</div></div>
+      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--red);">${fmtVND(tongTatCa)}</div><div class="sub" style="font-size:11px;">Tổng ước tính trừ</div></div>
+    </div>
+
+    <div class="sub" style="margin-bottom:10px;font-style:italic;">Số tiền chỉ mang tính tham khảo — Admin xác nhận trước khi trừ lương thật.</div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      ${rows.length === 0 ? `<div class="empty">Không có ai vi phạm quy chế tháng này. 🎉</div>` :
+        rows.map((r) => `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-weight:700;">${r.emp.hoTen}${r.emp.vaiTro === "QuanLy" ? ` <span class="pill" style="background:#E9F1FF;color:var(--primary);">Quản lý</span>` : ""}</span>
+            ${r.ded.tongTienPhat > 0 ? `<span style="font-weight:700;color:var(--red);">${fmtVND(r.ded.tongTienPhat)}</span>` : ""}
+          </div>
+          ${r.warnings.map((w) => `<div style="font-size:12.5px;padding:4px 0;">${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : "🟡"} ${w.text}</div>`).join("")}
         </div>`).join("")}
     </div>
   `;
@@ -1884,7 +2090,8 @@ function renderReportTheoNhanVien() {
     if (!byEmp[r.employeeId]) byEmp[r.employeeId] = { tongGio: 0, soNgay: 0, soNgayTre: 0 };
     byEmp[r.employeeId].tongGio += Number(r.tongGio) || 0;
     if (r.gioVao) byEmp[r.employeeId].soNgay += 1;
-    if (r.gioVao && isLate(r.gioVao)) byEmp[r.employeeId].soNgayTre += 1;
+    const rVaiTro = (state.employees.find((e) => e.id === r.employeeId) || {}).vaiTro;
+    if (r.gioVao && isLate(r.gioVao, rVaiTro)) byEmp[r.employeeId].soNgayTre += 1;
   });
   const allTimeRows = Object.entries(byEmp).map(([id, v]) => {
     const emp = state.employees.find((e) => e.id === id);
@@ -2037,11 +2244,11 @@ function openCompanyStatDetail(kind, year, month) {
     rowsHtml = filtered.length === 0 ? `<div class="empty">Không có ai đi trễ/về sớm tháng này.</div>` :
       filtered.map((r) => {
         const days = state.records.filter((rec) => !rec.deleted && rec.employeeId === r.emp.id && rec.dayKey && rec.dayKey.startsWith(prefix) &&
-          ((rec.gioVao && isLate(rec.gioVao)) || (rec.gioRa && isEarlyLeave(rec.gioRa))));
+          ((rec.gioVao && isLate(rec.gioVao, r.emp.vaiTro)) || (rec.gioRa && isEarlyLeave(rec.gioRa, r.emp.vaiTro))));
         const daysHtml = days.map((d) => {
           const reasons = [];
-          if (d.gioVao && isLate(d.gioVao)) reasons.push(`Trễ (vào ${d.gioVao})`);
-          if (d.gioRa && isEarlyLeave(d.gioRa)) reasons.push(`Sớm (ra ${d.gioRa})`);
+          if (d.gioVao && isLate(d.gioVao, r.emp.vaiTro)) reasons.push(`Trễ (vào ${d.gioVao})`);
+          if (d.gioRa && isEarlyLeave(d.gioRa, r.emp.vaiTro)) reasons.push(`Sớm (ra ${d.gioRa})`);
           return `<div class="sub" style="padding-left:10px;margin-top:2px;">• ${d.ngay}: ${reasons.join(", ")}</div>`;
         }).join("");
         return `<div data-goto-emp="${r.emp.id}" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;">
@@ -2630,20 +2837,51 @@ function renderSettingsQuanTri() {
       ${renderCustomTime("cf_gv", state.config.gioChuan)}
       <label class="sub" style="display:block;margin-bottom:4px;">Giờ ra chuẩn</label>
       ${renderCustomTime("cf_gr", state.config.gioRaChuan)}
-      <label class="sub" style="display:block;margin-bottom:4px;">Số phút cho phép trễ</label>
-      <input class="input" id="cf_tre" type="text" inputmode="numeric" value="${state.config.soPhutChoPhepTre}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_tre_field" />
+    </div>
+
+    <div class="settings-section-label">Trừ tiền theo quy chế (chỉ tham khảo, không tự trừ lương thật)</div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px;">Miễn trừ đi muộn/về sớm (không tính là vi phạm)</div>
+      <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên - số phút miễn trừ</label>
+      <input class="input" id="cf_mientru_nv" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_nv_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Quản lý - số phút miễn trừ</label>
+      <input class="input" id="cf_mientru_ql" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_ql_field" />
+    </div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px;">Mức phạt đi muộn/về sớm (đồng/giờ, sau khi trừ miễn trừ)</div>
+      <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
+      <input class="input" id="cf_phat_gio_nv" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_nv_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Quản lý</label>
+      <input class="input" id="cf_phat_gio_ql" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_ql_field" />
+    </div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px;">Mức phạt nghỉ không phép (đồng/lần)</div>
+      <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
+      <input class="input" id="cf_phat_nkp_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_nv_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Quản lý</label>
+      <input class="input" id="cf_phat_nkp_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_ql_field" />
+    </div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px;">Nghỉ có phép vượt mức</div>
+      <label class="sub" style="display:block;margin-bottom:4px;">Số ngày miễn phí/tháng</label>
+      <input class="input" id="cf_ngaynghi_mienphi" type="text" inputmode="numeric" value="${state.config.soNgayNghiPhepMienPhi}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_ngaynghi_mienphi_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Nhân viên</label>
+      <input class="input" id="cf_phat_np_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_nv_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Quản lý</label>
+      <input class="input" id="cf_phat_np_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_ql_field" />
+      <div class="sub" style="margin-top:-4px;">Mốc phạt bổ sung theo số lần đi muộn/tháng (8 lần: +200.000đ, 10 lần: +500.000đ cho Nhân viên; trên 5 lần: +300.000đ cho Quản lý) đã cố định theo quy chế, không chỉnh được ở đây.</div>
     </div>
 
     <div class="settings-section-label">Định vị GPS khi chấm công</div>
     <div class="card">
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <input type="checkbox" id="cf_gps" ${state.config.batBuocGPS ? "checked" : ""} /> Bắt buộc chấm công trong bán kính công ty
+        <input type="checkbox" id="cf_gps" ${state.config.batBuocGPS ? "checked" : ""} /> Bắt buộc chấm công trong bán kính Studio
       </label>
       <label class="sub" style="display:block;margin-bottom:4px;">Bán kính cho phép (mét)</label>
       <input class="input" id="cf_bk" type="text" inputmode="numeric" value="${state.config.banKinhGPS}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_bk_field" />
       <div class="sub" style="margin:-4px 0 10px;">GPS điện thoại luôn có sai số tự nhiên (thường 10-50m, có lúc hơn trong nhà/nhiều tầng). Nên đặt tối thiểu 50-100m để tránh chặn nhầm nhân viên đứng đúng vị trí.</div>
-      <button class="btn btn-outline" id="cf_setloc" style="margin-bottom:8px;">Lấy vị trí hiện tại làm vị trí công ty</button>
-      <div class="sub" id="cf_locinfo" style="margin-bottom:10px;">${state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí công ty"}</div>
+      <button class="btn btn-outline" id="cf_setloc" style="margin-bottom:8px;">Lấy vị trí hiện tại làm vị trí Studio</button>
+      <div class="sub" id="cf_locinfo" style="margin-bottom:10px;">${state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí Studio"}</div>
       <button class="btn btn-primary" id="btnSaveConfig">Lưu cấu hình</button>
     </div>
   `;
@@ -2707,7 +2945,7 @@ function bindSettingsEvents(u) {
   if (setLocBtn) setLocBtn.onclick = async () => {
     document.getElementById("cf_locinfo").textContent = "Đang xác định vị trí (đợi vài giây để có độ chính xác cao)...";
     const loc = await getLocation();
-    if (!loc) { toast("Không lấy được vị trí. Kiểm tra quyền định vị."); document.getElementById("cf_locinfo").textContent = state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí công ty"; return; }
+    if (!loc) { toast("Không lấy được vị trí. Kiểm tra quyền định vị."); document.getElementById("cf_locinfo").textContent = state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí Studio"; return; }
     state.config.viTriCongTy = { lat: loc.lat, lng: loc.lng };
     const accTxt = loc.accuracy ? ` (độ chính xác ~${Math.round(loc.accuracy)}m)` : "";
     document.getElementById("cf_locinfo").textContent = `Đã đặt: ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}${accTxt}`;
@@ -2716,23 +2954,36 @@ function bindSettingsEvents(u) {
   const gpsCheckbox = document.getElementById("cf_gps");
   if (gpsCheckbox) gpsCheckbox.onchange = () => {
     if (gpsCheckbox.checked && (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null)) {
-      toast("Cần đặt vị trí công ty trước khi bật bắt buộc GPS.");
+      toast("Cần đặt vị trí Studio trước khi bật bắt buộc GPS.");
       gpsCheckbox.checked = false;
     }
   };
   const saveCfg = document.getElementById("btnSaveConfig");
   if (saveCfg) saveCfg.onclick = async () => {
     if (document.getElementById("cf_gps").checked && (!state.config.viTriCongTy || state.config.viTriCongTy.lat == null)) {
-      toast("Cần đặt vị trí công ty (bấm nút bên trên) trước khi bật bắt buộc GPS.");
+      toast("Cần đặt vị trí Studio (bấm nút bên trên) trước khi bật bắt buộc GPS.");
       return;
     }
+    const numField = (id, fallback) => {
+      const el = document.getElementById(id);
+      return el ? (Number(el.value) || fallback) : fallback;
+    };
     state.config = {
       gioChuan: getCustomTimeValue("cf_gv"),
       gioRaChuan: getCustomTimeValue("cf_gr"),
-      soPhutChoPhepTre: Number(document.getElementById("cf_tre").value) || 0,
       batBuocGPS: document.getElementById("cf_gps").checked,
-      banKinhGPS: Number(document.getElementById("cf_bk").value) || 300,
+      banKinhGPS: numField("cf_bk", 300),
       viTriCongTy: state.config.viTriCongTy,
+      soPhutMienTruTreNV: numField("cf_mientru_nv", 30),
+      soPhutMienTruTreQL: numField("cf_mientru_ql", 60),
+      mucPhatGioTreNV: numField("cf_phat_gio_nv", 20000),
+      mucPhatGioTreQL: numField("cf_phat_gio_ql", 30000),
+      mucPhatNghiKhongPhepNV: numField("cf_phat_nkp_nv", 150000),
+      mucPhatNghiKhongPhepQL: numField("cf_phat_nkp_ql", 200000),
+      soNgayNghiPhepMienPhi: numField("cf_ngaynghi_mienphi", 2),
+      mucPhatNghiPhepVuotNV: numField("cf_phat_np_nv", 80000),
+      mucPhatNghiPhepVuotQL: numField("cf_phat_np_ql", 100000),
+      ngayNghiTrongTuan: state.config.ngayNghiTrongTuan !== undefined ? state.config.ngayNghiTrongTuan : 0,
       updatedAt: nowMs(),
     };
     saveLocal();
