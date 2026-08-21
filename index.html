@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-47";
+const APP_VERSION = "20260808-49";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -732,11 +732,14 @@ async function syncPull(silent) {
       // khi đồng bộ chạy ngầm (không vẽ lại giao diện), vì âm thanh không cần render.
       const u = currentUser();
       if (u) checkForNewNotifications(u);
-      // Đồng bộ NGẦM (chạy tự động mỗi 30s) chỉ cập nhật dữ liệu trong bộ nhớ,
-      // KHÔNG vẽ lại giao diện - tránh làm mất dữ liệu người dùng đang gõ dở
-      // (VD: đang chọn giờ trong Cài đặt, đang điền form thêm nhân viên...).
-      // Giao diện sẽ tự cập nhật ở lần chuyển tab/thao tác tiếp theo.
-      if (!silent) renderApp();
+      // Đồng bộ NGẦM (chạy tự động mỗi 30s) mặc định KHÔNG vẽ lại giao diện,
+      // tránh làm mất dữ liệu người dùng đang gõ dở (VD: đang chọn giờ trong
+      // Cài đặt, đang điền form thêm nhân viên...). NGOẠI LỆ: nếu đang ở màn
+      // "Chấm công" hoặc "Báo cáo" (không có ô nhập liệu dở dang, chỉ xem số
+      // liệu) và không có popup nào đang mở, vẫn tự vẽ lại - để số tiền vi
+      // phạm/trạng thái Bảng công luôn bám sát dữ liệu mới nhất từ máy khác.
+      const safeToAutoRefresh = (currentTab === "checkin" || currentTab === "report") && !isOverlayOpen();
+      if (!silent || safeToAutoRefresh) renderApp();
     } else if (res.sessionExpired) {
       handleSessionExpired();
     } else if (!silent) {
@@ -1179,6 +1182,10 @@ function countUnauthorizedAbsences(employeeId, year, month) {
 // Tính chi tiết số tiền bị trừ trong tháng cho 1 nhân viên, theo đúng quy chế.
 function computeMonthDeductions(employeeId, year, month) {
   const emp = state.employees.find((e) => e.id === employeeId);
+  const empty = { vaiTro: emp ? emp.vaiTro : "NhanVien", soLanTre: 0, soLanSom: 0, tienPhatTreSom: 0, tienPhatMoc: 0,
+    soLanNghiKhongPhep: 0, tienPhatNghiKhongPhep: 0, soNgayNghiPhep: 0, soNgayVuotMuc: 0, tienPhatNghiPhepVuot: 0, tongTienPhat: 0 };
+  if (emp && emp.loaiTruQuyChe) return empty; // đã loại trừ khỏi quy chế thưởng/phạt (VD: tài khoản test, Admin)
+
   const vaiTro = emp ? emp.vaiTro : "NhanVien";
   const isManager = vaiTro === "QuanLy" || vaiTro === "Admin";
   const cfg = state.config;
@@ -1235,6 +1242,7 @@ function computeMonthDeductions(employeeId, year, month) {
 function computeViolationWarnings(employeeId, year, month) {
   const emp = state.employees.find((e) => e.id === employeeId);
   if (!emp) return [];
+  if (emp.loaiTruQuyChe) return []; // đã loại trừ khỏi quy chế thưởng/phạt
   const isManager = emp.vaiTro === "QuanLy" || emp.vaiTro === "Admin";
   const ded = computeMonthDeductions(employeeId, year, month);
   const warnings = [];
@@ -1474,7 +1482,7 @@ function renderEmployees(u) {
           <div class="avatar">${(e.hoTen || "?").split(" ").slice(-1)[0][0]}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${e.hoTen}</div>
-            <div class="sub">${e.phongBan || ""} · ${e.chucVu || ""} · ${e.id}${e.ngayVaoLam ? ` · Vào làm: ${e.ngayVaoLam.split("-").reverse().join("/")}` : ""}</div>
+            <div class="sub">${e.phongBan || ""} · ${e.chucVu || ""} · ${e.id}${e.ngayVaoLam ? ` · Vào làm: ${e.ngayVaoLam.split("-").reverse().join("/")}` : ""}${e.loaiTruQuyChe ? ` · <span style="color:var(--sub);font-style:italic;">Loại trừ quy chế</span>` : ""}</div>
           </div>
           <span class="pill" style="background:#E9F1FF;color:var(--primary);margin-right:${admin ? "8px" : "0"};">${e.vaiTro === "Admin" ? "Admin" : e.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên"}</span>
           ${admin ? `<button class="btn btn-outline" data-edit-emp="${e.id}" style="width:auto;padding:6px 12px;font-size:12px;">Sửa</button>` : ""}
@@ -1520,6 +1528,12 @@ function openEmployeeForm(u, existing) {
             <input type="checkbox" class="em_perm_cb" data-perm="${key}" ${isEdit && existing.quyen && existing.quyen[key] ? "checked" : ""} /> ${label}
           </label>`).join("")}
       </div>
+      <div style="border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox" id="em_loaitru" ${isEdit && existing.loaiTruQuyChe ? "checked" : ""} /> Loại trừ khỏi quy chế thưởng/phạt
+        </label>
+        <div class="sub" style="margin-top:4px;">Dùng cho tài khoản test, demo, hoặc Admin không cần bị tính cảnh báo/trừ tiền vi phạm. Vẫn chấm công bình thường, chỉ không áp dụng thưởng/phạt.</div>
+      </div>
       <div id="em_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
       <div class="row">
         <button class="btn btn-outline" id="em_cancel">Huỷ</button>
@@ -1548,6 +1562,7 @@ function openEmployeeForm(u, existing) {
       const ten = document.getElementById("em_ten").value.trim();
       const pinInput = getPinValue("em_pin");
       const ngayVaoLam = getCustomDateValue("em_ngayvao");
+      const loaiTruQuyChe = document.getElementById("em_loaitru").checked;
       const err = document.getElementById("em_err");
       if (!ma || !ten) { err.textContent = "Nhập đủ Mã NV, Họ tên."; return; }
       if (!isEdit && !pinInput) { err.textContent = "Nhập PIN cho nhân viên mới."; return; }
@@ -1564,13 +1579,14 @@ function openEmployeeForm(u, existing) {
         existing.vaiTro = getSelectValue("em_vt");
         existing.quyen = quyen;
         existing.ngayVaoLam = ngayVaoLam;
+        existing.loaiTruQuyChe = loaiTruQuyChe;
         if (pinInput) existing.pin = pinInput;
         existing.updatedAt = nowMs();
       } else {
         state.employees.push({
           id: ma, hoTen: ten, pin: pinInput, phongBan: document.getElementById("em_pb").value.trim(),
           chucVu: document.getElementById("em_cv").value.trim(), vaiTro: getSelectValue("em_vt"),
-          quyen, trangThai: "DangLam", ngayVaoLam, updatedAt: nowMs(), deleted: false,
+          quyen, trangThai: "DangLam", ngayVaoLam, loaiTruQuyChe, updatedAt: nowMs(), deleted: false,
         });
       }
       saveLocal(); closeSheet(); renderApp();
