@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-50";
+const APP_VERSION = "20260808-51";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1247,19 +1247,39 @@ function computeViolationWarnings(employeeId, year, month) {
   const ded = computeMonthDeductions(employeeId, year, month);
   const warnings = [];
 
-  if (isManager) {
-    if (ded.soLanTre > 5) warnings.push({ level: 2, text: `Đi muộn ${ded.soLanTre} lần tháng này — vượt mức áp dụng phạt dành cho Quản lý (trên 5 lần).` });
-    else if (ded.soLanTre >= 3) warnings.push({ level: 1, text: `Đi muộn ${ded.soLanTre} lần tháng này — mức nhắc nhở dành cho Quản lý.` });
-  } else {
-    if (ded.soLanTre >= 10) warnings.push({ level: 3, text: `Đi muộn ${ded.soLanTre} lần tháng này — mức vi phạm nghiêm trọng theo quy chế.` });
-    else if (ded.soLanTre >= 8) warnings.push({ level: 2, text: `Đi muộn ${ded.soLanTre} lần tháng này — đã vượt mức phạt bổ sung theo quy chế.` });
-    else if (ded.soLanTre >= 5) warnings.push({ level: 1, text: `Đi muộn ${ded.soLanTre} lần tháng này — mức nhắc nhở theo quy chế.` });
+  // Đi muộn/về sớm - LUÔN hiện nếu có tiền bị trừ hoặc có ít nhất 1 lần, không chỉ
+  // khi đạt đủ mốc số lần chính thức (mốc chỉ quyết định MỨC ĐỘ, không quyết định
+  // có hiện hay không - vì tiền đã phát sinh ngay từ lần đầu tiên).
+  if (ded.soLanTre > 0) {
+    let level = 0, moc = "";
+    if (isManager) {
+      if (ded.soLanTre > 5) { level = 2; moc = "vượt mức áp dụng phạt dành cho Quản lý (trên 5 lần)"; }
+      else if (ded.soLanTre >= 3) { level = 1; moc = "mức nhắc nhở dành cho Quản lý"; }
+    } else {
+      if (ded.soLanTre >= 10) { level = 3; moc = "mức vi phạm nghiêm trọng theo quy chế"; }
+      else if (ded.soLanTre >= 8) { level = 2; moc = "đã vượt mức phạt bổ sung theo quy chế"; }
+      else if (ded.soLanTre >= 5) { level = 1; moc = "mức nhắc nhở theo quy chế"; }
+    }
+    const tienTre = Math.round(ded.tienPhatTreSom) + ded.tienPhatMoc;
+    const text = level > 0
+      ? `Đi muộn/về sớm ${ded.soLanTre} lần tháng này — ${moc}. Phát sinh: ${fmtVND(tienTre)}.`
+      : `Đi muộn/về sớm ${ded.soLanTre} lần tháng này — chưa đạt mức nhắc nhở chính thức, nhưng đã phát sinh phí: ${fmtVND(tienTre)}.`;
+    warnings.push({ level, text });
   }
 
-  if (!isManager && ded.soLanNghiKhongPhep >= 5) warnings.push({ level: 3, text: `Nghỉ không phép ${ded.soLanNghiKhongPhep} lần tháng này — mức vi phạm nghiêm trọng, có thể bị xem xét chấm dứt hợp tác.` });
-  else if (ded.soLanNghiKhongPhep >= 3) warnings.push({ level: 1, text: `Nghỉ không phép ${ded.soLanNghiKhongPhep} lần tháng này — mức nhắc nhở theo quy chế.` });
+  // Nghỉ không phép - tương tự, luôn hiện nếu có từ 1 lần trở lên
+  if (ded.soLanNghiKhongPhep > 0) {
+    let level = 0, moc = "";
+    if (!isManager && ded.soLanNghiKhongPhep >= 5) { level = 3; moc = "mức vi phạm nghiêm trọng, có thể bị xem xét chấm dứt hợp tác"; }
+    else if (ded.soLanNghiKhongPhep >= 3) { level = 1; moc = "mức nhắc nhở theo quy chế"; }
+    const text = level > 0
+      ? `Nghỉ không phép ${ded.soLanNghiKhongPhep} lần tháng này — ${moc}. Phát sinh: ${fmtVND(ded.tienPhatNghiKhongPhep)}.`
+      : `Nghỉ không phép ${ded.soLanNghiKhongPhep} lần tháng này — chưa đạt mức nhắc nhở chính thức, nhưng đã phát sinh phí: ${fmtVND(ded.tienPhatNghiKhongPhep)}.`;
+    warnings.push({ level, text });
+  }
 
-  if (ded.soNgayVuotMuc > 0) warnings.push({ level: 1, text: `Nghỉ phép ${ded.soNgayNghiPhep} ngày tháng này, vượt mức ${state.config.soNgayNghiPhepMienPhi} ngày miễn phí — các ngày vượt sẽ bị trừ theo quy định.` });
+  // Nghỉ phép vượt mức - ĐÃ ĐÚNG từ trước (luôn hiện khi có ngày vượt), giữ nguyên
+  if (ded.soNgayVuotMuc > 0) warnings.push({ level: 1, text: `Nghỉ phép ${ded.soNgayNghiPhep} ngày tháng này, vượt mức ${state.config.soNgayNghiPhepMienPhi} ngày miễn phí — phát sinh: ${fmtVND(ded.tienPhatNghiPhepVuot)}.` });
 
   return warnings;
 }
@@ -1332,10 +1352,10 @@ function renderCheckin(u) {
     </div>
 
     ${violationWarnings.length > 0 ? `
-    <div class="card" style="border:1px solid ${maxLevel === 3 ? "#F5C2C2" : maxLevel === 2 ? "#F5D9A8" : "#F5E7A8"};">
+    <div class="card" style="border:1px solid ${maxLevel === 3 ? "#F5C2C2" : maxLevel === 2 ? "#F5D9A8" : maxLevel === 1 ? "#F5E7A8" : "#E2E5EA"};">
       <div style="font-weight:700;margin-bottom:8px;">⚠️ Cảnh báo vi phạm quy chế — Tháng ${Number(p.month)}/${p.year}</div>
       ${violationWarnings.map((w) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;">
-        <span>${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : "🟡"}</span>
+        <span>${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : w.level === 1 ? "🟡" : "💰"}</span>
         <span style="font-size:13px;">${w.text}</span>
       </div>`).join("")}
       ${deductions.tongTienPhat > 0 ? `<div style="padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
@@ -2081,7 +2101,7 @@ function renderReportViPham() {
             <span style="font-weight:700;">${r.emp.hoTen}${r.emp.vaiTro === "QuanLy" ? ` <span class="pill" style="background:#E9F1FF;color:var(--primary);">Quản lý</span>` : ""}</span>
             ${r.ded.tongTienPhat > 0 ? `<span style="font-weight:700;color:var(--red);">${fmtVND(r.ded.tongTienPhat)}</span>` : ""}
           </div>
-          ${r.warnings.map((w) => `<div style="font-size:12.5px;padding:4px 0;">${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : "🟡"} ${w.text}</div>`).join("")}
+          ${r.warnings.map((w) => `<div style="font-size:12.5px;padding:4px 0;">${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : w.level === 1 ? "🟡" : "💰"} ${w.text}</div>`).join("")}
         </div>`).join("")}
     </div>
   `;
