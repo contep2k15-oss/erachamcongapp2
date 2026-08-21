@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-51";
+const APP_VERSION = "20260808-52";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -1302,7 +1302,6 @@ function renderCheckin(u) {
   const stats = computeMonthStats(u.id, Number(p.year), Number(p.month));
   const violationWarnings = computeViolationWarnings(u.id, Number(p.year), Number(p.month));
   const deductions = computeMonthDeductions(u.id, Number(p.year), Number(p.month));
-  const maxLevel = violationWarnings.reduce((m, w) => Math.max(m, w.level), 0);
   const lastRecord = [...state.records].filter((r) => !r.deleted && r.employeeId === u.id && r.gioVao)
     .sort((a, b) => (a.dayKey + (a.gioVao || "") < b.dayKey + (b.gioVao || "") ? 1 : -1))[0];
   const unread = unreadNotifCount(u);
@@ -1346,23 +1345,17 @@ function renderCheckin(u) {
       <div data-stat-row="treSom" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;">
         <span>Số lần đi muộn, về sớm</span><span style="display:flex;align-items:center;gap:4px;"><b style="color:${stats.soLanTreSom > 0 ? "var(--amber)" : "var(--ink)"};">${stats.soLanTreSom}</b><span class="sub">›</span></span>
       </div>
-      <div data-stat-row="ngayNghi" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;">
+      <div data-stat-row="ngayNghi" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;${violationWarnings.length > 0 ? "border-bottom:1px solid var(--line);" : ""}cursor:pointer;">
         <span>Số ngày nghỉ</span><span style="display:flex;align-items:center;gap:4px;"><b>${stats.soNgayNghi}</b><span class="sub">›</span></span>
       </div>
-    </div>
-
-    ${violationWarnings.length > 0 ? `
-    <div class="card" style="border:1px solid ${maxLevel === 3 ? "#F5C2C2" : maxLevel === 2 ? "#F5D9A8" : maxLevel === 1 ? "#F5E7A8" : "#E2E5EA"};">
-      <div style="font-weight:700;margin-bottom:8px;">⚠️ Cảnh báo vi phạm quy chế — Tháng ${Number(p.month)}/${p.year}</div>
-      ${violationWarnings.map((w) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;">
-        <span>${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : w.level === 1 ? "🟡" : "💰"}</span>
-        <span style="font-size:13px;">${w.text}</span>
-      </div>`).join("")}
-      ${deductions.tongTienPhat > 0 ? `<div style="padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
-        <span class="sub">Ước tính bị trừ tháng này</span><span style="font-weight:800;color:var(--red);">${fmtVND(deductions.tongTienPhat)}</span>
+      <div id="dt_canhbao_row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;">
+        <span>⚠️ Cảnh báo vi phạm</span>
+        <span style="display:flex;align-items:center;gap:4px;">
+          <b style="color:${violationWarnings.length > 0 ? "var(--red)" : "var(--green)"};">${violationWarnings.length > 0 ? `${violationWarnings.length} cảnh báo · ${fmtVND(deductions.tongTienPhat)}` : "Không có"}</b>
+          <span class="sub">›</span>
+        </span>
       </div>
-      <div class="sub" style="margin-top:4px;font-style:italic;">Số liệu tham khảo — Admin xác nhận trước khi trừ lương thật.</div>` : ""}
-    </div>` : ""}
+    </div>
   </div>`;
 }
 
@@ -1381,6 +1374,8 @@ function bindScreenEventsCheckin(u) {
   document.querySelectorAll("[data-stat-row]").forEach((row) => {
     row.onclick = () => openStatDetail(row.dataset.statRow, u, Number(p.year), Number(p.month));
   });
+  const canhBaoRow = document.getElementById("dt_canhbao_row");
+  if (canhBaoRow) canhBaoRow.onclick = () => openViolationDetail(u, Number(p.year), Number(p.month));
 
   const notifBtn = document.getElementById("btnNotif");
   if (notifBtn) notifBtn.onclick = () => openNotificationsSheet(u);
@@ -1431,6 +1426,28 @@ function bindScreenEventsCheckin(u) {
     // thoát/khoá máy ngay sau khi chấm công khiến dữ liệu chưa kịp gửi đi.
     await syncNowWithFeedback("Đã chấm công và đồng bộ thành công.");
   };
+}
+
+// Mở sheet chi tiết cảnh báo vi phạm + tiền bị trừ (bấm vào dòng "Cảnh báo vi phạm"
+// trong Tổng hợp công) - gọn màn hình chính, chỉ xổ ra khi cần xem.
+function openViolationDetail(u, year, month) {
+  const warnings = computeViolationWarnings(u.id, year, month);
+  const deductions = computeMonthDeductions(u.id, year, month);
+  openSheet(`
+    <div class="sheet-title">Cảnh báo vi phạm — Tháng ${month}/${year}</div>
+    ${warnings.length === 0 ? `<div class="empty">Không có cảnh báo nào tháng này. 🎉</div>` : `
+      ${warnings.map((w) => `<div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;">
+        <span>${w.level === 3 ? "🔴" : w.level === 2 ? "🟠" : w.level === 1 ? "🟡" : "💰"}</span>
+        <span style="font-size:13px;">${w.text}</span>
+      </div>`).join("")}
+      ${deductions.tongTienPhat > 0 ? `<div style="padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+        <span class="sub">Ước tính bị trừ tháng này</span><span style="font-weight:800;color:var(--red);">${fmtVND(deductions.tongTienPhat)}</span>
+      </div>
+      <div class="sub" style="margin-top:4px;font-style:italic;">Số liệu tham khảo — Admin xác nhận trước khi trừ lương thật.</div>` : ""}
+    `}
+    <button class="btn btn-outline" id="vd_close" style="margin-top:14px;">Đóng</button>
+  `);
+  document.getElementById("vd_close").onclick = closeSheet;
 }
 
 function openStatDetail(kind, u, year, month) {
