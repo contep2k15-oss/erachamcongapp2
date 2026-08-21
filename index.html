@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-45";
+const APP_VERSION = "20260808-47";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -195,7 +195,7 @@ const SESSION_KEY = "cc_session_v1";
 // STATE
 // =====================================================================
 let state = loadLocal() || {
-  employees: [], records: [], leaveRequests: [], correctionRequests: [], auditLog: [], announcements: [], dutyRoster: [], dutyPattern: [],
+  employees: [], records: [], leaveRequests: [], correctionRequests: [], auditLog: [], announcements: [], dutyRoster: [], dutyPattern: [], holidays: [],
   shifts: [{ id: "CA1", tenCa: "Ca hành chính", gioBatDau: "08:00", gioKetThuc: "17:30", updatedAt: 0, deleted: false }],
   config: {
     gioChuan: "08:00", gioRaChuan: "17:30", soPhutChoPhepTre: 10, batBuocGPS: false, banKinhGPS: 300, viTriCongTy: { lat: null, lng: null },
@@ -215,6 +215,7 @@ if (!state.auditLog) state.auditLog = [];
 if (!state.announcements) state.announcements = [];
 if (!state.dutyRoster) state.dutyRoster = [];
 if (!state.dutyPattern) state.dutyPattern = [];
+if (!state.holidays) state.holidays = [];
 // Vá thêm các trường cấu hình mới cho state cũ đã lưu trước khi có tính năng trừ tiền
 (function patchConfigDefaults() {
   const defaults = {
@@ -638,6 +639,7 @@ function mergeServerIntoLocal(serverData) {
   state.announcements = mergeCollection(state.announcements, serverData.announcements);
   state.dutyRoster = mergeCollection(state.dutyRoster, serverData.dutyRoster);
   state.dutyPattern = mergeCollection(state.dutyPattern, serverData.dutyPattern);
+  state.holidays = mergeCollection(state.holidays, serverData.holidays);
   state.shifts = mergeCollection(state.shifts, serverData.shifts);
   if (serverData.config && (serverData.config.updatedAt || 0) >= (state.config.updatedAt || 0)) {
     state.config = serverData.config;
@@ -699,7 +701,7 @@ async function syncPush(silent) {
       data: {
         employees: state.employees, records: state.records,
         leaveRequests: state.leaveRequests, correctionRequests: state.correctionRequests,
-        auditLog: state.auditLog, announcements: state.announcements, dutyRoster: state.dutyRoster, dutyPattern: state.dutyPattern, shifts: state.shifts, config: state.config,
+        auditLog: state.auditLog, announcements: state.announcements, dutyRoster: state.dutyRoster, dutyPattern: state.dutyPattern, holidays: state.holidays, shifts: state.shifts, config: state.config,
       },
     });
     if (res.success) {
@@ -1117,21 +1119,59 @@ function daysInLeaveWithinMonth(leave, year, month) {
 // Đếm số lần nghỉ KHÔNG PHÉP trong tháng: ngày làm việc (không phải ngày nghỉ
 // hàng tuần), không có chấm công, không có đơn nghỉ phép đã duyệt che ngày đó.
 // Chỉ xét đến hôm nay - không tính ngày tương lai (chưa tới thì chưa biết được).
+// Kiểm tra 1 ngày có phải ngày lễ đặc biệt không (Tết, 30/4-1/5...) - trả về
+// tên ngày lễ nếu có, null nếu không phải.
+function getHolidayName(dayKey) {
+  const h = state.holidays.find((x) => !x.deleted && x.tuNgay <= dayKey && x.denNgay >= dayKey);
+  return h ? h.tenNgayLe : null;
+}
+
+// Tính trạng thái ĐẦY ĐỦ của 1 ngày cho 1 nhân viên - dùng chung cho cả tô màu
+// lịch và hiện chi tiết khi bấm vào. Đúng thứ tự ưu tiên:
+// Chưa vào làm > Ngày lễ > Ngày nghỉ hàng tuần > Nghỉ có phép > Có chấm công > Nghỉ không phép > Tương lai
+function computeDayStatus(employeeId, dayKey) {
+  const emp = state.employees.find((e) => e.id === employeeId);
+  const todayK = nowVNDayKey();
+  const rec = state.records.find((r) => !r.deleted && r.employeeId === employeeId && r.dayKey === dayKey);
+  const leave = state.leaveRequests.find((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet" && l.tuNgay <= dayKey && l.denNgay >= dayKey);
+  const holidayName = getHolidayName(dayKey);
+  const dateObj = new Date(dayKey + "T00:00:00");
+  const isWeeklyOff = dateObj.getDay() === Number(state.config.ngayNghiTrongTuan);
+
+  if (emp && emp.ngayVaoLam && dayKey < emp.ngayVaoLam) {
+    return { kind: "chuaVaoLam", label: "Chưa vào làm", bg: "transparent", color: "var(--ink)", rec, leave, holidayName };
+  }
+  if (holidayName) {
+    return { kind: "ngayLe", label: `Nghỉ lễ: ${holidayName}`, bg: "#EDE9FE", color: "#7C3AED", rec, leave, holidayName };
+  }
+  if (isWeeklyOff && !(rec && rec.gioVao)) {
+    return { kind: "nghiHangTuan", label: "Ngày nghỉ hàng tuần", bg: "#F3F5F9", color: "var(--sub)", rec, leave, holidayName };
+  }
+  if (leave) {
+    return { kind: "nghiPhep", label: `Nghỉ phép — ${leave.loaiNghi}`, bg: "#E9F1FF", color: "var(--primary)", rec, leave, holidayName };
+  }
+  if (rec && rec.gioVao && rec.gioRa) {
+    const late = isLate(rec.gioVao, emp && emp.vaiTro) || isEarlyLeave(rec.gioRa, emp && emp.vaiTro);
+    return { kind: late ? "diTre" : "duCong", label: late ? "Đi làm (đi muộn/về sớm)" : "Đi làm — Đủ công", bg: late ? "#FDF3E4" : "#E7F8F0", color: late ? "var(--amber)" : "var(--green)", rec, leave, holidayName };
+  }
+  if (rec && rec.gioVao) {
+    const late = isLate(rec.gioVao, emp && emp.vaiTro);
+    return { kind: "dangLam", label: late ? "Đang làm (đi trễ)" : "Đang làm (chưa chấm ra)", bg: late ? "#FDF3E4" : "#E9F1FF", color: late ? "var(--amber)" : "var(--primary)", rec, leave, holidayName };
+  }
+  if (dayKey > todayK) {
+    return { kind: "tuongLai", label: "Chưa tới ngày này", bg: "transparent", color: "var(--ink)", rec, leave, holidayName };
+  }
+  return { kind: "nghiKhongPhep", label: "Nghỉ không phép", bg: "#FBEAEA", color: "var(--red)", rec, leave, holidayName };
+}
+
 function countUnauthorizedAbsences(employeeId, year, month) {
   const todayK = nowVNDayKey();
   const daysInMonth = new Date(year, month, 0).getDate();
-  const offDay = Number(state.config.ngayNghiTrongTuan);
   let count = 0;
   for (let d = 1; d <= daysInMonth; d++) {
     const dayKey = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (dayKey > todayK) break;
-    const dateObj = new Date(year, month - 1, d);
-    if (dateObj.getDay() === offDay) continue;
-    const rec = state.records.find((r) => !r.deleted && r.employeeId === employeeId && r.dayKey === dayKey && r.gioVao);
-    if (rec) continue;
-    const leave = state.leaveRequests.find((l) => !l.deleted && l.employeeId === employeeId && l.trangThai === "DaDuyet" && l.tuNgay <= dayKey && l.denNgay >= dayKey);
-    if (leave) continue;
-    count++;
+    if (computeDayStatus(employeeId, dayKey).kind === "nghiKhongPhep") count++;
   }
   return count;
 }
@@ -1434,7 +1474,7 @@ function renderEmployees(u) {
           <div class="avatar">${(e.hoTen || "?").split(" ").slice(-1)[0][0]}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${e.hoTen}</div>
-            <div class="sub">${e.phongBan || ""} · ${e.chucVu || ""} · ${e.id}</div>
+            <div class="sub">${e.phongBan || ""} · ${e.chucVu || ""} · ${e.id}${e.ngayVaoLam ? ` · Vào làm: ${e.ngayVaoLam.split("-").reverse().join("/")}` : ""}</div>
           </div>
           <span class="pill" style="background:#E9F1FF;color:var(--primary);margin-right:${admin ? "8px" : "0"};">${e.vaiTro === "Admin" ? "Admin" : e.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên"}</span>
           ${admin ? `<button class="btn btn-outline" data-edit-emp="${e.id}" style="width:auto;padding:6px 12px;font-size:12px;">Sửa</button>` : ""}
@@ -1462,6 +1502,9 @@ function openEmployeeForm(u, existing) {
       <input class="input" id="em_ten" placeholder="Họ tên" value="${isEdit ? existing.hoTen : ""}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" name="em_hoten_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
       <input class="input" id="em_pb" placeholder="Phòng ban" value="${isEdit ? (existing.phongBan || "") : ""}" autocomplete="off" name="em_phongban_field" />
       <input class="input" id="em_cv" placeholder="Chức vụ" value="${isEdit ? (existing.chucVu || "") : ""}" autocomplete="off" name="em_chucvu_field" />
+      <label class="sub" style="display:block;margin-bottom:4px;">Ngày vào làm</label>
+      ${renderCustomDate("em_ngayvao", isEdit ? (existing.ngayVaoLam || "") : todayKey())}
+      <div class="sub" style="margin:-4px 0 10px;">Dùng để tránh tính "nghỉ không phép"/trừ tiền cho những ngày trước khi nhân viên chính thức vào làm.</div>
       <label class="sub" style="display:block;margin-bottom:4px;">${isEdit ? "PIN mới (để trống nếu giữ nguyên)" : "PIN (4-6 số)"}</label>
       ${renderPinEntry("em_pin", 6)}
       <label class="sub" style="display:block;margin-bottom:4px;">Vai trò</label>
@@ -1486,6 +1529,7 @@ function openEmployeeForm(u, existing) {
     `);
     resetPinValue("em_pin");
     bindPinEntry("em_pin");
+    bindCustomDate("em_ngayvao");
     bindCustomSelect("em_vt", (val) => {
       document.getElementById("em_permBlock").style.display = val === "Admin" ? "none" : "block";
     });
@@ -1503,9 +1547,11 @@ function openEmployeeForm(u, existing) {
       const ma = document.getElementById("em_ma").value.trim();
       const ten = document.getElementById("em_ten").value.trim();
       const pinInput = getPinValue("em_pin");
+      const ngayVaoLam = getCustomDateValue("em_ngayvao");
       const err = document.getElementById("em_err");
       if (!ma || !ten) { err.textContent = "Nhập đủ Mã NV, Họ tên."; return; }
       if (!isEdit && !pinInput) { err.textContent = "Nhập PIN cho nhân viên mới."; return; }
+      if (!isEdit && !ngayVaoLam) { err.textContent = "Vui lòng chọn Ngày vào làm."; return; }
       if (!isEdit && activeEmployees().some((e) => e.id === ma)) { err.textContent = "Mã nhân viên đã tồn tại."; return; }
 
       const quyen = {};
@@ -1517,13 +1563,14 @@ function openEmployeeForm(u, existing) {
         existing.chucVu = document.getElementById("em_cv").value.trim();
         existing.vaiTro = getSelectValue("em_vt");
         existing.quyen = quyen;
+        existing.ngayVaoLam = ngayVaoLam;
         if (pinInput) existing.pin = pinInput;
         existing.updatedAt = nowMs();
       } else {
         state.employees.push({
           id: ma, hoTen: ten, pin: pinInput, phongBan: document.getElementById("em_pb").value.trim(),
           chucVu: document.getElementById("em_cv").value.trim(), vaiTro: getSelectValue("em_vt"),
-          quyen, trangThai: "DangLam", updatedAt: nowMs(), deleted: false,
+          quyen, trangThai: "DangLam", ngayVaoLam, updatedAt: nowMs(), deleted: false,
         });
       }
       saveLocal(); closeSheet(); renderApp();
@@ -1568,8 +1615,6 @@ function renderHistory(u) {
   const canViewAll = isAdmin(u) || hasPerm(u, "xemBaoCao") || hasPerm(u, "quanLyNhanVien") || hasPerm(u, "duyetNghiPhep");
   const viewEmp = activeEmployees().find((e) => e.id === bcState.employeeId) || u;
   const stats = computeMonthStats(viewEmp.id, bcState.year, bcState.month);
-  const recMap = {};
-  stats.records.forEach((r) => { recMap[r.dayKey] = r; });
 
   const employeeSelectHtml = canViewAll ? `
     <label class="sub" style="display:block;margin-bottom:4px;">Xem bảng công của</label>
@@ -1604,11 +1649,11 @@ function renderHistory(u) {
       <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:18px;font-weight:800;color:var(--red);">${stats.soNgayNghi}</div><div class="sub" style="font-size:11px;">Ngày nghỉ</div></div>
     </div>
 
-    ${bcState.mode === "calendar" ? renderBcCalendar(bcState.year, bcState.month, recMap, viewEmp.vaiTro) : renderBcList(stats.records, viewEmp.vaiTro)}
+    ${bcState.mode === "calendar" ? renderBcCalendar(bcState.year, bcState.month, viewEmp.id) : renderBcList(stats.records, viewEmp.vaiTro)}
   </div>`;
 }
 
-function renderBcCalendar(year, month, recMap, vaiTro) {
+function renderBcCalendar(year, month, employeeId) {
   const firstDay = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstWeekday = (firstDay.getDay() + 6) % 7; // 0=T2 ... 6=CN
@@ -1626,17 +1671,23 @@ function renderBcCalendar(year, month, recMap, vaiTro) {
   cells.forEach((d) => {
     if (d == null) { html += `<div></div>`; return; }
     const dayKey = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const rec = recMap[dayKey];
-    let bg = "transparent", color = "var(--ink)";
-    if (rec && rec.gioVao) {
-      const late = isLate(rec.gioVao, vaiTro) || (rec.gioRa && isEarlyLeave(rec.gioRa, vaiTro));
-      bg = late ? "#FDF3E4" : "#E7F8F0";
-      color = late ? "var(--amber)" : "var(--green)";
-    }
+    const st = computeDayStatus(employeeId, dayKey);
     const isToday = dayKey === todayK;
-    html += `<button type="button" data-bcday="${dayKey}" style="aspect-ratio:1;border:none;border-radius:8px;background:${bg};color:${color};font-size:13px;font-weight:${isToday ? 800 : 600};cursor:pointer;${isToday ? "outline:2px solid var(--primary);outline-offset:-2px;" : ""}">${d}</button>`;
+    html += `<button type="button" data-bcday="${dayKey}" style="aspect-ratio:1;border:none;border-radius:8px;background:${st.bg};color:${st.color};font-size:13px;font-weight:${isToday ? 800 : 600};cursor:pointer;${isToday ? "outline:2px solid var(--primary);outline-offset:-2px;" : ""}">${d}</button>`;
   });
   html += `</div></div>`;
+  html += `
+    <div class="card" style="padding:10px 14px;">
+      <div style="font-weight:700;font-size:12px;margin-bottom:8px;">Chú thích màu</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11.5px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:#E7F8F0;flex-shrink:0;"></span>Đủ công, đúng giờ</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:#FDF3E4;flex-shrink:0;"></span>Đi muộn/về sớm</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:#E9F1FF;flex-shrink:0;"></span>Nghỉ có phép</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:#FBEAEA;flex-shrink:0;"></span>Nghỉ không phép</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:#F3F5F9;flex-shrink:0;"></span>Nghỉ hàng tuần</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:#EDE9FE;flex-shrink:0;"></span>Nghỉ lễ đặc biệt</div>
+      </div>
+    </div>`;
   return html;
 }
 
@@ -1701,27 +1752,19 @@ function openDayDetail(dayKey, employeeId, currentUser, canEdit) {
   const blockedByHierarchy = canEdit && targetIsSelfOrManager && !isAdmin(currentUser);
   const canEditDirectly = canEdit && (isAdmin(currentUser) || !targetIsSelfOrManager);
 
-  let statusText = "Chưa chấm công", statusColor = "var(--sub)";
-  if (leave) { statusText = "Nghỉ (" + leave.loaiNghi + ")"; statusColor = "var(--red)"; }
-  else if (rec && rec.gioVao && rec.gioRa) {
-    const late = isLate(rec.gioVao, emp && emp.vaiTro) || isEarlyLeave(rec.gioRa, emp && emp.vaiTro);
-    statusText = late ? "Đi làm (đi muộn/về sớm)" : "Đi làm — Đủ công";
-    statusColor = late ? "var(--amber)" : "var(--green)";
-  } else if (rec && rec.gioVao) {
-    statusText = "Đang làm (chưa chấm ra)"; statusColor = "var(--primary)";
-  }
+  const dayStatus = computeDayStatus(employeeId, dayKey);
 
   const ot = rec ? overtimeHours(rec) : 0;
   openSheet(`
     <div class="sheet-title">Chi tiết ngày ${ngayVN}${emp ? " — " + emp.hoTen : ""}</div>
-    <div class="sub" style="margin-bottom:10px;color:${statusColor};font-weight:700;">${statusText}</div>
+    <div class="sub" style="margin-bottom:10px;color:${dayStatus.color};font-weight:700;">${dayStatus.label}</div>
     ${rec ? `
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><span class="sub">Giờ vào</span><span style="font-weight:700;">${rec.gioVao || "—"}</span></div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><span class="sub">Giờ ra</span><span style="font-weight:700;">${rec.gioRa || "—"}</span></div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><span class="sub">Tổng giờ làm</span><span style="font-weight:700;">${rec.tongGio ? rec.tongGio + "h" : "—"}</span></div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;${rec.ghiChu ? "border-bottom:1px solid var(--line);" : ""}"><span class="sub">Giờ làm thêm</span><span style="font-weight:700;color:var(--green);">${ot > 0 ? "+" + ot.toFixed(1) + "h" : "—"}</span></div>
       ${rec.ghiChu ? `<div style="padding:8px 0;"><div class="sub">Ghi chú</div><div>${rec.ghiChu}</div></div>` : ""}
-    ` : `<div class="empty">${leave ? "" : "Chưa có dữ liệu chấm công ngày này."}</div>`}
+    ` : `<div class="empty">${leave || dayStatus.kind !== "nghiKhongPhep" ? "" : "Chưa có dữ liệu chấm công ngày này."}</div>`}
     ${blockedByHierarchy ? `<div class="sub" style="margin-top:8px;font-style:italic;color:var(--amber);">Bạn là Quản lý — không thể tự sửa công của chính mình hoặc Quản lý khác. Vui lòng dùng "Đề nghị cập nhật công" để Admin duyệt.</div>` : ""}
     ${existingRequest ? `<div style="margin-top:10px;padding:10px;background:#F3F5F9;border-radius:10px;">
       <div class="sub" style="margin-bottom:4px;">Đề nghị gần nhất cho ngày này:</div>
@@ -1939,33 +1982,24 @@ function renderReport(u) {
 // ---- TAB "HÔM NAY" - trạng thái chấm công của toàn bộ nhân viên trong ngày hôm nay ----
 function computeTodayStatus(emp) {
   const dayKey = todayKey();
-  const rec = state.records.find((r) => !r.deleted && r.employeeId === emp.id && r.dayKey === dayKey);
-  const leave = state.leaveRequests.find((l) => !l.deleted && l.employeeId === emp.id && l.trangThai === "DaDuyet" && l.tuNgay <= dayKey && l.denNgay >= dayKey);
-
-  let status = "chuaChamCong", label = "Chưa chấm công", bg = "#FBEAEA", color = "var(--red)";
-  if (leave) {
-    status = "nghiPhep"; label = "Nghỉ phép"; bg = "#F3F5F9"; color = "var(--sub)";
-  } else if (rec && rec.gioVao && rec.gioRa) {
-    const late = isLate(rec.gioVao, emp.vaiTro) || isEarlyLeave(rec.gioRa, emp.vaiTro);
-    status = late ? "hoanTatTre" : "hoanTat";
-    label = late ? "Hoàn tất (trễ/sớm)" : "Hoàn tất";
-    bg = late ? "#FDF3E4" : "#E7F8F0"; color = late ? "var(--amber)" : "var(--green)";
-  } else if (rec && rec.gioVao) {
-    const late = isLate(rec.gioVao, emp.vaiTro);
-    status = late ? "dangLamTre" : "dangLam";
-    label = late ? "Đang làm (trễ)" : "Đang làm";
-    bg = late ? "#FDF3E4" : "#E9F1FF"; color = late ? "var(--amber)" : "var(--primary)";
-  }
-  return { emp, rec, leave, status, label, bg, color };
+  const st = computeDayStatus(emp.id, dayKey);
+  // Nhãn ngắn gọn hơn cho danh sách "Hôm nay" (khác với Chi tiết ngày đầy đủ)
+  const shortLabels = {
+    chuaVaoLam: "Chưa vào làm", ngayLe: "Nghỉ lễ", nghiHangTuan: "Nghỉ hàng tuần",
+    nghiPhep: "Nghỉ phép", duCong: "Hoàn tất", diTre: "Hoàn tất (trễ/sớm)",
+    dangLam: st.rec && isLate(st.rec.gioVao, emp.vaiTro) ? "Đang làm (trễ)" : "Đang làm",
+    tuongLai: "Chưa chấm công", nghiKhongPhep: "Chưa chấm công",
+  };
+  return { emp, rec: st.rec, leave: st.leave, status: st.kind, label: shortLabels[st.kind] || st.label, bg: st.bg, color: st.color };
 }
 
 function renderReportHomNay() {
   const rows = activeEmployees().map(computeTodayStatus).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
   const soDaChamCong = rows.filter((r) => r.rec && r.rec.gioVao).length;
-  const soDangLam = rows.filter((r) => r.status === "dangLam" || r.status === "dangLamTre").length;
-  const soDiTre = rows.filter((r) => r.status === "dangLamTre" || r.status === "hoanTatTre").length;
+  const soDangLam = rows.filter((r) => r.status === "dangLam").length;
+  const soDiTre = rows.filter((r) => r.rec && r.rec.gioVao && isLate(r.rec.gioVao, r.emp.vaiTro)).length;
   const soNghiPhep = rows.filter((r) => r.status === "nghiPhep").length;
-  const soChuaChamCong = rows.filter((r) => r.status === "chuaChamCong").length;
+  const soChuaChamCong = rows.filter((r) => r.status === "nghiKhongPhep" || r.status === "tuongLai").length;
 
   return `
     <div class="sub" style="text-align:center;margin-bottom:10px;text-transform:capitalize;">${nowVNWeekdayLong()}</div>
@@ -2824,6 +2858,42 @@ function renderSettingsCaNhan(u, vaiTroLabel, admin) {
 }
 
 // ---- TAB 2: QUẢN TRỊ (chỉ Admin) - dữ liệu hệ thống + cấu hình giờ làm/GPS tách riêng ----
+// Form thêm/sửa 1 ngày lễ đặc biệt (Tết, 30/4-1/5...) - dùng khoảng ngày để nhập 1 lần cho cả kỳ nghỉ dài
+function openHolidayForm(existing) {
+  const isEdit = !!existing;
+  openSheet(`
+    <div class="sheet-title">${isEdit ? "Sửa ngày lễ" : "Thêm ngày lễ"}</div>
+    <label class="sub" style="display:block;margin-bottom:4px;">Tên ngày lễ</label>
+    <input class="input" id="nl_ten" placeholder="VD: Tết Nguyên Đán 2027" value="${isEdit ? existing.tenNgayLe : ""}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="nl_ten_field" />
+    <label class="sub" style="display:block;margin-bottom:4px;">Từ ngày</label>
+    ${renderCustomDate("nl_tu", isEdit ? existing.tuNgay : todayKey())}
+    <label class="sub" style="display:block;margin-bottom:4px;">Đến ngày</label>
+    ${renderCustomDate("nl_den", isEdit ? existing.denNgay : todayKey())}
+    <div id="nl_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="row"><button class="btn btn-outline" id="nl_cancel">Huỷ</button><button class="btn btn-primary" id="nl_save">Lưu</button></div>
+  `);
+  bindCustomDate("nl_tu");
+  bindCustomDate("nl_den");
+  document.getElementById("nl_cancel").onclick = closeSheet;
+  document.getElementById("nl_save").onclick = async () => {
+    const ten = document.getElementById("nl_ten").value.trim();
+    const tu = getCustomDateValue("nl_tu");
+    const den = getCustomDateValue("nl_den");
+    const err = document.getElementById("nl_err");
+    if (!ten) { err.textContent = "Vui lòng nhập tên ngày lễ."; return; }
+    if (!tu || !den) { err.textContent = "Chọn đủ Từ ngày/Đến ngày."; return; }
+    if (tu > den) { err.textContent = "Từ ngày phải trước hoặc bằng Đến ngày."; return; }
+
+    if (isEdit) {
+      existing.tenNgayLe = ten; existing.tuNgay = tu; existing.denNgay = den; existing.updatedAt = nowMs();
+    } else {
+      state.holidays.push({ id: genId("NL"), tenNgayLe: ten, tuNgay: tu, denNgay: den, updatedAt: nowMs(), deleted: false });
+    }
+    saveLocal(); closeSheet(); renderApp();
+    await syncNowWithFeedback(isEdit ? "Đã cập nhật ngày lễ." : "Đã thêm ngày lễ.");
+  };
+}
+
 function renderSettingsQuanTri() {
   return `
     <div class="card">
@@ -2871,6 +2941,23 @@ function renderSettingsQuanTri() {
       <input class="input" id="cf_phat_np_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_ql_field" />
       <div class="sub" style="margin-top:-4px;">Mốc phạt bổ sung theo số lần đi muộn/tháng (8 lần: +200.000đ, 10 lần: +500.000đ cho Nhân viên; trên 5 lần: +300.000đ cho Quản lý) đã cố định theo quy chế, không chỉnh được ở đây.</div>
     </div>
+
+    <div class="settings-section-label">Ngày lễ đặc biệt</div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);">
+        <div class="sub">Những ngày này sẽ tô màu riêng trên Bảng công và KHÔNG bị tính "nghỉ không phép" dù không ai chấm công (VD: Tết, 30/4-1/5, Quốc khánh...).</div>
+      </div>
+      ${state.holidays.filter((h) => !h.deleted).length === 0 ? `<div class="empty">Chưa khai báo ngày lễ nào.</div>` :
+        [...state.holidays].filter((h) => !h.deleted).sort((a, b) => a.tuNgay.localeCompare(b.tuNgay)).map((h) => `
+        <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="font-weight:600;font-size:13px;">${h.tenNgayLe}</div><div class="sub">${h.tuNgay.split("-").reverse().join("/")} → ${h.denNgay.split("-").reverse().join("/")}</div></div>
+          <div style="display:flex;gap:6px;">
+            <button data-nl-edit="${h.id}" class="btn btn-outline" style="width:auto;padding:6px 10px;font-size:12px;">Sửa</button>
+            <button data-nl-del="${h.id}" class="btn btn-red" style="width:auto;padding:6px 10px;font-size:12px;">Xoá</button>
+          </div>
+        </div>`).join("")}
+    </div>
+    <button class="btn btn-outline" id="btnAddHoliday" style="margin-bottom:12px;">+ Thêm ngày lễ</button>
 
     <div class="settings-section-label">Định vị GPS khi chấm công</div>
     <div class="card">
@@ -2922,6 +3009,25 @@ function renderSettingsUngDung(admin) {
 
 function bindSettingsEvents(u) {
   document.querySelectorAll("[data-settings-tab]").forEach((b) => b.onclick = () => { settingsViewTab = b.dataset.settingsTab; renderApp(); });
+
+  const addHolidayBtn = document.getElementById("btnAddHoliday");
+  if (addHolidayBtn) addHolidayBtn.onclick = () => openHolidayForm(null);
+  document.querySelectorAll("[data-nl-edit]").forEach((b) => {
+    b.onclick = () => {
+      const h = state.holidays.find((x) => x.id === b.dataset.nlEdit);
+      if (h) openHolidayForm(h);
+    };
+  });
+  document.querySelectorAll("[data-nl-del]").forEach((b) => {
+    b.onclick = async () => {
+      const h = state.holidays.find((x) => x.id === b.dataset.nlDel);
+      if (!h) return;
+      h.deleted = true;
+      h.updatedAt = nowMs();
+      saveLocal(); renderApp();
+      await syncNowWithFeedback("Đã xoá ngày lễ.");
+    };
+  });
 
   const logoutBtn = document.getElementById("btnLogout");
   if (logoutBtn) logoutBtn.onclick = doLogout;
