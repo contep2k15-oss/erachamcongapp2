@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-61";
+const APP_VERSION = "20260808-63";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -390,7 +390,7 @@ function logAuditChange(employeeId, dayKey, nguoiThucHien, oldVals, newVals, lyD
 }
 
 // Múi giờ CỐ ĐỊNH Hà Nội - không phụ thuộc cài đặt múi giờ trên điện thoại,
-// đảm bảo mọi nhân viên (dù máy cài sai giờ) vẫn chấm công đúng giờ Việt Nam.
+// đảm bảo mọi nhân sự (dù máy cài sai giờ) vẫn chấm công đúng giờ Việt Nam.
 const VN_TZ = "Asia/Ho_Chi_Minh";
 function nowVNParts() {
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -592,12 +592,12 @@ function isManager(u) { u = u || currentUser(); return u && (u.vaiTro === "QuanL
 function isAdmin(u) { u = u || currentUser(); return u && u.vaiTro === "Admin"; }
 // Quyền chi tiết do Admin cấp riêng cho từng người (ngoài Admin luôn có full quyền)
 const PERMISSIONS = {
-  suaChamCong: "Sửa giờ chấm công của nhân viên",
+  suaChamCong: "Sửa giờ chấm công của nhân sự",
   duyetNghiPhep: "Duyệt / từ chối đơn nghỉ phép",
   duyetDeNghiCong: "Duyệt / từ chối đề nghị sửa công",
-  quanLyNhanVien: "Thêm / sửa thông tin nhân viên",
+  quanLyNhanVien: "Thêm / sửa thông tin nhân sự",
   xemBaoCao: "Xem báo cáo tổng hợp",
-  guiThongBao: "Gửi tin nhắn thông báo đến nhân viên",
+  guiThongBao: "Gửi tin nhắn thông báo đến nhân sự",
 };
 function hasPerm(u, key) {
   u = u || currentUser();
@@ -608,7 +608,7 @@ function hasPerm(u, key) {
 function canSeeEmployeesTab(u) { return isAdmin(u) || hasPerm(u, "quanLyNhanVien"); }
 function canSeeReportTab(u) { return isAdmin(u) || hasPerm(u, "xemBaoCao") || hasPerm(u, "duyetNghiPhep") || hasPerm(u, "duyetDeNghiCong"); }
 
-// Phân cấp duyệt: Nhân viên thường -> Quản lý (có quyền) hoặc Admin đều duyệt được.
+// Phân cấp duyệt: Nhân sự thường -> Quản lý (có quyền) hoặc Admin đều duyệt được.
 // Quản lý -> CHỈ Admin mới duyệt được (Quản lý không duyệt được yêu cầu của Quản lý khác).
 function canApproveRequest(approver, submitterEmployee, permKey) {
   if (isAdmin(approver)) return true; // Admin duyệt được mọi cấp
@@ -734,7 +734,7 @@ async function syncPull(silent) {
       if (u) checkForNewNotifications(u);
       // Đồng bộ NGẦM (chạy tự động mỗi 30s) mặc định KHÔNG vẽ lại giao diện,
       // tránh làm mất dữ liệu người dùng đang gõ dở (VD: đang chọn giờ trong
-      // Cài đặt, đang điền form thêm nhân viên...). NGOẠI LỆ: nếu đang ở màn
+      // Cài đặt, đang điền form thêm nhân sự...). NGOẠI LỆ: nếu đang ở màn
       // "Chấm công" hoặc "Báo cáo" (không có ô nhập liệu dở dang, chỉ xem số
       // liệu) và không có popup nào đang mở, vẫn tự vẽ lại - để số tiền vi
       // phạm/trạng thái Bảng công luôn bám sát dữ liệu mới nhất từ máy khác.
@@ -845,7 +845,7 @@ function compressImageFile(file) {
 async function doLogin(maNV, pin) {
   const res = await apiCall("GET", { action: "login", maNV, pin });
   if (!res.success) return { ok: false, error: res.error };
-  // gộp nhân viên vừa xác thực vào local (không có PIN, server đã ẩn đi)
+  // gộp nhân sự vừa xác thực vào local (không có PIN, server đã ẩn đi)
   state.employees = mergeCollection(state.employees, [res.data]);
   saveLocal();
   session = { employeeId: res.data.id, token: res.session };
@@ -874,7 +874,7 @@ async function createFirstAdmin(hoTen, maNV, pin) {
   state.employees = mergeCollection(state.employees, [emp]);
   saveLocal();
   await syncPush(); // lần đầu hệ thống trống nên server cho phép sync không cần session (bootstrap)
-  // sau khi nhân viên đã tồn tại trên server, đăng nhập thật để lấy session hợp lệ
+  // sau khi nhân sự đã tồn tại trên server, đăng nhập thật để lấy session hợp lệ
   const r = await doLogin(maNV, pin);
   if (!r.ok) {
     // trường hợp hiếm: đồng bộ delay - vẫn tạm coi như đăng nhập cục bộ để không kẹt màn hình
@@ -898,7 +898,7 @@ function openQuickActions(u) {
     <div class="qa-item" id="qa_leave"><div class="qa-icon">${ICONS.leave}</div><div><div style="font-weight:600;">Tạo đơn nghỉ phép</div><div class="sub">Gửi đơn chờ duyệt</div></div></div>
     <div class="qa-item" id="qa_correction"><div class="qa-icon">${ICONS.edit}</div><div><div style="font-weight:600;">Đề nghị cập nhật công</div><div class="sub">Sửa giờ vào/ra hôm nay</div></div></div>
     <div class="qa-item" id="qa_duty"><div class="qa-icon">${ICONS.duty}</div><div><div style="font-weight:600;">Bảng trực nhật</div><div class="sub">Xem lịch trực theo tháng</div></div></div>
-    ${canAnnounce ? `<div class="qa-item" id="qa_announce"><div class="qa-icon">${ICONS.announce}</div><div><div style="font-weight:600;">Gửi thông báo</div><div class="sub">Nhắn tới toàn bộ hoặc 1 nhân viên</div></div></div>` : ""}
+    ${canAnnounce ? `<div class="qa-item" id="qa_announce"><div class="qa-icon">${ICONS.announce}</div><div><div style="font-weight:600;">Gửi thông báo</div><div class="sub">Nhắn tới toàn bộ hoặc 1 nhân sự</div></div></div>` : ""}
     <div class="qa-item" id="qa_settings"><div class="qa-icon">${ICONS.settings}</div><div><div style="font-weight:600;">Cài đặt</div><div class="sub">Tài khoản, quyền, đồng bộ...</div></div></div>
   `);
   document.getElementById("qa_leave").onclick = () => { closeSheet(); openLeaveForm(u); };
@@ -933,7 +933,7 @@ function renderApp() {
   const u = currentUser();
   const NAV = [
     { key: "checkin", label: "Chấm công" },
-    ...(canSeeEmployeesTab(u) ? [{ key: "employees", label: "Nhân viên" }] : []),
+    ...(canSeeEmployeesTab(u) ? [{ key: "employees", label: "Nhân sự" }] : []),
     { key: "history", label: "Bảng công" },
     ...(canSeeReportTab(u) ? [{ key: "report", label: "Báo cáo" }] : []),
     { key: "more", label: "Thêm" },
@@ -984,7 +984,7 @@ function renderSetupScreen() {
     </div>
     <div class="card" style="max-width:380px;margin:0 auto;width:100%;">
       <input class="input" id="su_ten" placeholder="Họ tên của bạn" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" name="su_hoten_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
-      <input class="input" id="su_ma" placeholder="Mã nhân viên (VD: NV001)" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="su_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <input class="input" id="su_ma" placeholder="Mã nhân sự (VD: NV001)" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="su_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
       <label class="sub" style="display:block;margin-bottom:4px;">Đặt mã PIN (4-6 số)</label>
       ${renderPinEntry("su_pin", 6)}
       <div id="su_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
@@ -1016,10 +1016,10 @@ function renderLoginScreen() {
        background:linear-gradient(160deg,var(--primary),var(--primaryDark));">
     <div style="text-align:center;color:#fff;margin-bottom:24px;">
       <div style="font-size:24px;font-weight:800;">Era Media</div>
-      <div style="font-size:13px;opacity:.85;margin-top:4px;">Đăng nhập bằng mã nhân viên</div>
+      <div style="font-size:13px;opacity:.85;margin-top:4px;">Đăng nhập bằng mã nhân sự</div>
     </div>
     <div class="card" style="max-width:380px;margin:0 auto;width:100%;">
-      <input class="input" id="li_ma" placeholder="Mã nhân viên" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="li_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+      <input class="input" id="li_ma" placeholder="Mã nhân sự" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="li_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
       <label class="sub" style="display:block;margin-bottom:4px;">Mã PIN</label>
       ${renderPinEntry("li_pin", 6)}
       <div id="li_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
@@ -1054,7 +1054,7 @@ function myTodayRecord(u) {
 
 // So sánh giờ vào thực tế với Giờ vào chuẩn + Số phút cho phép trễ (trong Cài đặt).
 // Trả về true nếu đi trễ vượt quá mức cho phép.
-// Mức miễn trừ đi muộn/về sớm theo vai trò - Quản lý/Admin được miễn trừ nhiều hơn Nhân viên
+// Mức miễn trừ đi muộn/về sớm theo vai trò - Quản lý/Admin được miễn trừ nhiều hơn Nhân sự
 function graceMinutesFor(vaiTro) {
   return (vaiTro === "QuanLy" || vaiTro === "Admin") ? (Number(state.config.soPhutMienTruTreQL) || 60) : (Number(state.config.soPhutMienTruTreNV) || 30);
 }
@@ -1084,7 +1084,7 @@ function overtimeHours(record) {
   return diff > 0 ? Math.round((diff / 60) * 100) / 100 : 0;
 }
 
-// Tính 4 chỉ số tổng quan tháng cho 1 nhân viên: tổng công, giờ làm thêm, số lần trễ/sớm, số ngày nghỉ
+// Tính 4 chỉ số tổng quan tháng cho 1 nhân sự: tổng công, giờ làm thêm, số lần trễ/sớm, số ngày nghỉ
 function computeMonthStats(employeeId, year, month) {
   const prefix = `${year}-${String(month).padStart(2, "0")}`;
   const empVaiTro = (state.employees.find((e) => e.id === employeeId) || {}).vaiTro;
@@ -1129,7 +1129,7 @@ function getHolidayName(dayKey) {
   return h ? h.tenNgayLe : null;
 }
 
-// Tính trạng thái ĐẦY ĐỦ của 1 ngày cho 1 nhân viên - dùng chung cho cả tô màu
+// Tính trạng thái ĐẦY ĐỦ của 1 ngày cho 1 nhân sự - dùng chung cho cả tô màu
 // lịch và hiện chi tiết khi bấm vào. Đúng thứ tự ưu tiên:
 // Chưa vào làm > Ngày lễ > Ngày nghỉ hàng tuần > Nghỉ có phép > Có chấm công > Nghỉ không phép > Tương lai
 function computeDayStatus(employeeId, dayKey) {
@@ -1179,7 +1179,7 @@ function countUnauthorizedAbsences(employeeId, year, month) {
   return count;
 }
 
-// Tính chi tiết số tiền bị trừ trong tháng cho 1 nhân viên, theo đúng quy chế.
+// Tính chi tiết số tiền bị trừ trong tháng cho 1 nhân sự, theo đúng quy chế.
 function computeMonthDeductions(employeeId, year, month) {
   const emp = state.employees.find((e) => e.id === employeeId);
   const empty = { vaiTro: emp ? emp.vaiTro : "NhanVien", soLanTre: 0, soLanSom: 0, tienPhatTreSom: 0, tienPhatMoc: 0,
@@ -1437,7 +1437,7 @@ function openViolationDetail(u, year, month) {
       ${deductions.tongTienPhat > 0 ? `<div style="padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
         <span class="sub">Ước tính bị trừ tháng này</span><span style="font-weight:800;color:var(--red);">${fmtVND(deductions.tongTienPhat)}</span>
       </div>
-      <div class="sub" style="margin-top:4px;font-style:italic;">Số liệu tham khảo — Admin xác nhận trước khi trừ lương thật.</div>` : ""}
+      <div class="sub" style="margin-top:4px;font-style:italic;">*Số liệu tạm tính, chờ Admin phê duyệt.</div>` : ""}
     `}
     <button class="btn btn-outline" id="vd_close" style="margin-top:14px;">Đóng</button>
   `);
@@ -1504,10 +1504,10 @@ function renderEmployees(u) {
   const list = activeEmployees();
   const admin = isAdmin(u);
   return `
-  <div class="header"><div class="title">Nhân viên</div></div>
+  <div class="header"><div class="title">Nhân sự</div></div>
   <div class="pad">
     <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:calc(100vh - 198px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));">
-      ${list.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+      ${list.length === 0 ? `<div class="empty">Chưa có nhân sự.</div>` :
         list.map((e) => `
         <div class="list-item" style="padding:12px 16px;">
           <div class="avatar">${(e.hoTen || "?").split(" ").slice(-1)[0][0]}</div>
@@ -1515,11 +1515,11 @@ function renderEmployees(u) {
             <div style="font-weight:600;">${e.hoTen}</div>
             <div class="sub">${e.phongBan || ""} · ${e.chucVu || ""} · ${e.id}${e.ngayVaoLam ? ` · Vào làm: ${e.ngayVaoLam.split("-").reverse().join("/")}` : ""}${e.loaiTruQuyChe ? ` · <span style="color:var(--sub);font-style:italic;">Loại trừ quy chế</span>` : ""}</div>
           </div>
-          <span class="pill" style="background:#E9F1FF;color:var(--primary);margin-right:${admin ? "8px" : "0"};">${e.vaiTro === "Admin" ? "Admin" : e.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên"}</span>
+          <span class="pill" style="background:#E9F1FF;color:var(--primary);margin-right:${admin ? "8px" : "0"};">${e.vaiTro === "Admin" ? "Admin" : e.vaiTro === "QuanLy" ? "Quản lý" : "Nhân sự"}</span>
           ${admin ? `<button class="btn btn-outline" data-edit-emp="${e.id}" style="width:auto;padding:6px 12px;font-size:12px;">Sửa</button>` : ""}
         </div>`).join("")}
     </div>
-    <button class="btn btn-primary" id="btnAddEmp" style="margin-top:12px;">+ Thêm nhân viên</button>
+    <button class="btn btn-primary" id="btnAddEmp" style="margin-top:12px;">+ Thêm nhân sự</button>
   </div>`;
 }
 function bindEmployeesEvents(u) {
@@ -1536,19 +1536,19 @@ function bindEmployeesEvents(u) {
 function openEmployeeForm(u, existing) {
   const isEdit = !!existing;
     openSheet(`
-      <div class="sheet-title">${isEdit ? "Sửa nhân viên: " + existing.hoTen : "Thêm nhân viên"}</div>
+      <div class="sheet-title">${isEdit ? "Sửa nhân sự: " + existing.hoTen : "Thêm nhân sự"}</div>
       <input class="input" id="em_ma" placeholder="Mã NV" value="${isEdit ? existing.id : ""}" ${isEdit ? "disabled" : "readonly onfocus=\"this.removeAttribute('readonly');\""} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="em_manv_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
       <input class="input" id="em_ten" placeholder="Họ tên" value="${isEdit ? existing.hoTen : ""}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" name="em_hoten_field" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
       <input class="input" id="em_pb" placeholder="Phòng ban" value="${isEdit ? (existing.phongBan || "") : ""}" autocomplete="off" name="em_phongban_field" />
       <input class="input" id="em_cv" placeholder="Chức vụ" value="${isEdit ? (existing.chucVu || "") : ""}" autocomplete="off" name="em_chucvu_field" />
       <label class="sub" style="display:block;margin-bottom:4px;">Ngày vào làm</label>
       ${renderCustomDate("em_ngayvao", isEdit ? (existing.ngayVaoLam || "") : todayKey())}
-      <div class="sub" style="margin:-4px 0 10px;">Dùng để tránh tính "nghỉ không phép"/trừ tiền cho những ngày trước khi nhân viên chính thức vào làm.</div>
+      <div class="sub" style="margin:-4px 0 10px;">Dùng để tránh tính "nghỉ không phép"/trừ tiền cho những ngày trước khi nhân sự chính thức vào làm.</div>
       <label class="sub" style="display:block;margin-bottom:4px;">${isEdit ? "PIN mới (để trống nếu giữ nguyên)" : "PIN (4-6 số)"}</label>
       ${renderPinEntry("em_pin", 6)}
       <label class="sub" style="display:block;margin-bottom:4px;">Vai trò</label>
       ${renderCustomSelect("em_vt", [
-        { value: "NhanVien", label: "Nhân viên" },
+        { value: "NhanVien", label: "Nhân sự" },
         { value: "QuanLy", label: "Quản lý" },
         ...(isAdmin(u) ? [{ value: "Admin", label: "Admin" }] : []),
       ], isEdit ? existing.vaiTro : "NhanVien")}
@@ -1585,7 +1585,7 @@ function openEmployeeForm(u, existing) {
       existing.deleted = true;
       existing.updatedAt = nowMs();
       saveLocal(); closeSheet(); renderApp();
-      await syncNowWithFeedback("Đã xoá nhân viên và đồng bộ thành công.");
+      await syncNowWithFeedback("Đã xoá nhân sự và đồng bộ thành công.");
     };
 
     document.getElementById("em_save").onclick = async () => {
@@ -1596,9 +1596,9 @@ function openEmployeeForm(u, existing) {
       const loaiTruQuyChe = document.getElementById("em_loaitru").checked;
       const err = document.getElementById("em_err");
       if (!ma || !ten) { err.textContent = "Nhập đủ Mã NV, Họ tên."; return; }
-      if (!isEdit && !pinInput) { err.textContent = "Nhập PIN cho nhân viên mới."; return; }
+      if (!isEdit && !pinInput) { err.textContent = "Nhập PIN cho nhân sự mới."; return; }
       if (!isEdit && !ngayVaoLam) { err.textContent = "Vui lòng chọn Ngày vào làm."; return; }
-      if (!isEdit && activeEmployees().some((e) => e.id === ma)) { err.textContent = "Mã nhân viên đã tồn tại."; return; }
+      if (!isEdit && activeEmployees().some((e) => e.id === ma)) { err.textContent = "Mã nhân sự đã tồn tại."; return; }
 
       const quyen = {};
       document.querySelectorAll(".em_perm_cb").forEach((cb) => { quyen[cb.dataset.perm] = cb.checked; });
@@ -1621,7 +1621,7 @@ function openEmployeeForm(u, existing) {
         });
       }
       saveLocal(); closeSheet(); renderApp();
-      await syncNowWithFeedback(isEdit ? "Đã cập nhật nhân viên và đồng bộ thành công." : "Đã thêm nhân viên và đồng bộ thành công.");
+      await syncNowWithFeedback(isEdit ? "Đã cập nhật nhân sự và đồng bộ thành công." : "Đã thêm nhân sự và đồng bộ thành công.");
     };
 }
 
@@ -1849,7 +1849,7 @@ let pendingCorrectionImage = null; // lưu tạm ảnh đã nén (base64) trư�
 
 function openAnnouncementForm(u) {
   const targetOptions = [
-    { value: "ALL", label: "Tất cả nhân viên" },
+    { value: "ALL", label: "Tất cả nhân sự" },
     ...activeEmployees().filter((e) => e.id !== u.id).map((e) => ({ value: e.id, label: e.hoTen })),
   ];
   openSheet(`
@@ -2007,7 +2007,7 @@ function openEditRecordForm(u, recordId) {
 
 // =====================================================================
 // SCREEN: BÁO CÁO (chỉ QuanLy/Admin) - chia 3 tab con: Tổng quan / Theo
-// nhân viên / Cần duyệt, giống cấu trúc các app HRM chuyên nghiệp (MISA...)
+// nhân sự / Cần duyệt, giống cấu trúc các app HRM chuyên nghiệp (MISA...)
 // =====================================================================
 let reportMonthState = { year: null, month: null };
 function ensureReportMonthState() {
@@ -2018,9 +2018,9 @@ function ensureReportMonthState() {
   }
 }
 let reportViewTab = null; // "tongquan" | "theonhanvien" | "canduyet" - tự chọn tab đầu tiên khả dụng
-let reportEmpViewMode = "thang"; // "thang" | "toanthoigian" - áp dụng riêng cho tab Theo nhân viên
+let reportEmpViewMode = "thang"; // "thang" | "toanthoigian" - áp dụng riêng cho tab Theo nhân sự
 let reportOverviewMode = "homnay"; // "homnay" | "thang" - công tắc bên trong tab Tổng quan
-let reportEmpFilter = "tatca"; // "tatca" | "vipham" - bộ lọc bên trong tab Theo nhân viên
+let reportEmpFilter = "tatca"; // "tatca" | "vipham" - bộ lọc bên trong tab Theo nhân sự
 
 function renderReport(u) {
   ensureReportMonthState();
@@ -2033,7 +2033,7 @@ function renderReport(u) {
   const canViewCanDuyetTab = canViewLeaveSection || canViewCorrectionSection;
 
   const availableTabs = [
-    ...(canViewFullReport ? [{ key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }] : []),
+    ...(canViewFullReport ? [{ key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân sự" }] : []),
     ...(canViewCanDuyetTab ? [{ key: "canduyet", label: "Cần duyệt" }] : []),
   ];
   if (!reportViewTab || !availableTabs.find((t) => t.key === reportViewTab)) {
@@ -2054,21 +2054,20 @@ function renderReport(u) {
   <div class="header"><div class="title">Báo cáo</div></div>
   <div class="pad" id="report_swipe_area">
     ${availableTabs.length > 1 ? `
-    <div class="tabs" style="margin-bottom:2px;">
+    <div class="tabs" style="margin-bottom:12px;">
       ${availableTabs.map((t) => `<button type="button" data-report-tab="${t.key}" class="${reportViewTab === t.key ? "active" : ""}">${t.label}${t.key === "canduyet" && soLuongCanDuyet > 0 ? ` (${soLuongCanDuyet})` : ""}</button>`).join("")}
-    </div>
-    <div class="sub" style="text-align:center;font-size:10.5px;margin-bottom:10px;">‹ › vuốt để chuyển tab</div>` : ""}
+    </div>` : ""}
     ${bodyHtml}
   </div>`;
 }
 
 // ---- TAB 1: TỔNG QUAN - số liệu cấp Studio theo tháng ----
-// ---- TAB "HÔM NAY" - trạng thái chấm công của toàn bộ nhân viên trong ngày hôm nay ----
-// Bấm vào 1 ô trong "Tổng quan → Hôm nay" -> hiện danh sách nhân viên tương ứng
+// ---- TAB "HÔM NAY" - trạng thái chấm công của toàn bộ nhân sự trong ngày hôm nay ----
+// Bấm vào 1 ô trong "Tổng quan → Hôm nay" -> hiện danh sách nhân sự tương ứng
 function openTodayStatDetail(kind) {
   const rows = activeEmployees().map(computeTodayStatus).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
   const titles = {
-    tongNV: "Tổng nhân viên", daChamCong: "Đã chấm công hôm nay", dangLam: "Đang làm (chưa chấm ra)",
+    tongNV: "Tổng nhân sự", daChamCong: "Đã chấm công hôm nay", dangLam: "Đang làm (chưa chấm ra)",
     diTre: "Đi trễ hôm nay", nghiPhep: "Nghỉ phép hôm nay", chuaChamCong: "Chưa chấm công hôm nay",
   };
   let filtered = rows;
@@ -2110,7 +2109,7 @@ function computeTodayStatus(emp) {
 
 // Nội dung "Hôm nay" - được gọi từ bên trong tab Tổng quan qua công tắc, không còn là tab riêng
 // Tính max-height cho vùng cuộn RIÊNG (không cuộn theo toàn trang) - dùng chung
-// cho tab Nhân viên và các danh sách trong Báo cáo. "extraFixedPx" là chiều cao
+// cho tab Nhân sự và các danh sách trong Báo cáo. "extraFixedPx" là chiều cao
 // ước lượng của các khối "cố định" phía trên danh sách trong CHÍNH màn hình đó
 // (không tính header/tab-bar/nav vốn đã có sẵn trong công thức gốc).
 // Lưu ý: đây là số ước lượng ban đầu, có thể cần tinh chỉnh sau khi thử máy thật.
@@ -2134,7 +2133,7 @@ function renderReportHomNayContent() {
     <div class="sub" style="text-align:center;margin-bottom:10px;text-transform:capitalize;">${nowVNWeekdayLong()}</div>
 
     <div class="row" style="margin-bottom:10px;">
-      <div class="card" data-today-stat="tongNV" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub" style="font-size:11px;">Tổng nhân viên ›</div></div>
+      <div class="card" data-today-stat="tongNV" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub" style="font-size:11px;">Tổng nhân sự ›</div></div>
       <div class="card" data-today-stat="daChamCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${soDaChamCong}</div><div class="sub" style="font-size:11px;">Đã chấm công ›</div></div>
     </div>
     <div class="row" style="margin-bottom:10px;">
@@ -2148,7 +2147,7 @@ function renderReportHomNayContent() {
 
     <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(24 + 182 + 45)};">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Danh sách chấm công hôm nay</div>
-      ${rows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+      ${rows.length === 0 ? `<div class="empty">Chưa có nhân sự.</div>` :
         rows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${r.emp.hoTen}</div>
@@ -2160,7 +2159,7 @@ function renderReportHomNayContent() {
   `;
 }
 
-// Nội dung "Vi phạm" - được gọi từ bên trong tab Theo nhân viên qua bộ lọc, không còn là tab riêng
+// Nội dung "Vi phạm" - được gọi từ bên trong tab Theo nhân sự qua bộ lọc, không còn là tab riêng
 function renderReportViPhamContent() {
   const rows = activeEmployees().map((emp) => {
     const warnings = computeViolationWarnings(emp.id, reportMonthState.year, reportMonthState.month);
@@ -2177,7 +2176,7 @@ function renderReportViPhamContent() {
       <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--red);">${fmtVND(tongTatCa)}</div><div class="sub" style="font-size:11px;">Tổng ước tính trừ</div></div>
     </div>
 
-    <div class="sub" style="margin-bottom:10px;font-style:italic;">Số tiền chỉ mang tính tham khảo — Admin xác nhận trước khi trừ lương thật.</div>
+    <div class="sub" style="margin-bottom:10px;font-style:italic;">*Số liệu tạm tính, chờ Admin phê duyệt.</div>
 
     <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(58 + 68 + 78 + 30)};">
       ${rows.length === 0 ? `<div class="empty">Không có ai vi phạm quy chế tháng này. 🎉</div>` :
@@ -2302,7 +2301,7 @@ function renderReportTheoNhanVien() {
     <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(58 + 90 + 45)};">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Bấm vào 1 người để xem chi tiết + lịch sử đơn/đề nghị</div>
       ${reportEmpViewMode === "thang" ? (
-        monthRows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
+        monthRows.length === 0 ? `<div class="empty">Chưa có nhân sự.</div>` :
         monthRows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;">${r.emp.hoTen}</div>
@@ -2442,17 +2441,17 @@ function openCompanyStatDetail(kind, year, month) {
   let title = "", rowsHtml = "";
 
   if (kind === "coCong") {
-    title = "Nhân viên có công / chưa có công";
+    title = "Nhân sự có công / chưa có công";
     const sorted = [...empRows].sort((a, b) => b.stats.tongCong - a.stats.tongCong);
     rowsHtml = sorted.map((r) => `<div data-goto-emp="${r.emp.id}" style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
       <span>${r.emp.hoTen}</span><span style="display:flex;align-items:center;gap:4px;"><b style="color:${r.stats.tongCong > 0 ? "var(--green)" : "var(--red)"};">${r.stats.tongCong > 0 ? r.stats.tongCong + " công" : "Chưa có công"}</b><span class="sub">›</span></span></div>`).join("");
   } else if (kind === "tongCong") {
-    title = "Tổng công theo nhân viên";
+    title = "Tổng công theo nhân sự";
     const sorted = [...empRows].sort((a, b) => b.stats.tongCong - a.stats.tongCong);
     rowsHtml = sorted.map((r) => `<div data-goto-emp="${r.emp.id}" style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
       <span>${r.emp.hoTen}</span><span style="display:flex;align-items:center;gap:4px;"><b>${r.stats.tongCong} công</b><span class="sub">›</span></span></div>`).join("");
   } else if (kind === "gioLamThem") {
-    title = "Giờ làm thêm theo nhân viên";
+    title = "Giờ làm thêm theo nhân sự";
     const filtered = empRows.filter((r) => r.stats.tongGioLamThem > 0).sort((a, b) => b.stats.tongGioLamThem - a.stats.tongGioLamThem);
     rowsHtml = filtered.length === 0 ? `<div class="empty">Chưa có ai làm thêm giờ tháng này.</div>` :
       filtered.map((r) => `<div data-goto-emp="${r.emp.id}" style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
@@ -2478,7 +2477,7 @@ function openCompanyStatDetail(kind, year, month) {
         </div>`;
       }).join("");
   } else if (kind === "ngayNghi") {
-    title = "Ngày nghỉ theo nhân viên";
+    title = "Ngày nghỉ theo nhân sự";
     const filtered = empRows.filter((r) => r.stats.soNgayNghi > 0).sort((a, b) => b.stats.soNgayNghi - a.stats.soNgayNghi);
     rowsHtml = filtered.length === 0 ? `<div class="empty">Không có ai nghỉ phép tháng này.</div>` :
       filtered.map((r) => {
@@ -2510,7 +2509,7 @@ function openCompanyStatDetail(kind, year, month) {
 
   openSheet(`
     <div class="sheet-title">${title}</div>
-    <div class="sub" style="margin-bottom:8px;">Bấm vào 1 dòng để xem chi tiết đầy đủ của nhân viên đó.</div>
+    <div class="sub" style="margin-bottom:8px;">Bấm vào 1 dòng để xem chi tiết đầy đủ của nhân sự đó.</div>
     <div style="max-height:60vh;overflow-y:auto;">${rowsHtml}</div>
     <button class="btn btn-outline" id="cs_close" style="margin-top:14px;">Đóng</button>
   `);
@@ -2561,7 +2560,7 @@ function openEmployeeMonthDetail(employeeId, year, month) {
         </div>`).join("")}
     </div>
 
-    <button class="btn btn-primary" id="empd_gotobangcong" style="margin-top:14px;">Xem Bảng công của ${emp ? emp.hoTen : "nhân viên này"} →</button>
+    <button class="btn btn-primary" id="empd_gotobangcong" style="margin-top:14px;">Xem Bảng công của ${emp ? emp.hoTen : "nhân sự này"} →</button>
     <button class="btn btn-outline" id="empd_close" style="margin-top:8px;">Đóng</button>
   `);
   document.getElementById("empd_close").onclick = closeSheet;
@@ -2618,7 +2617,7 @@ async function decideCorrection(id, trangThai, u) {
 
 // =====================================================================
 // SCREEN: NGHỈ PHÉP (nhúng trong Lịch sử? - để đơn giản, gộp vào tab riêng qua nút trong Chấm công)
-// Ở đây làm 1 tab ẩn truy cập qua nút trong "Lịch sử" cho nhân viên thường
+// Ở đây làm 1 tab ẩn truy cập qua nút trong "Lịch sử" cho nhân sự thường
 // =====================================================================
 function openLeaveForm(u) {
   openSheet(`
@@ -2851,8 +2850,8 @@ function openDutyPatternRuleForm(u, thu) {
   const empOptions = activeEmployees().map((e) => ({ value: e.id, label: e.hoTen }));
   openSheet(`
     <div class="sheet-title">Thêm quy tắc — ${WEEKDAY_LABELS[thu]}</div>
-    <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
-    ${empOptions.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` : renderCustomSelect("tnmd_emp", empOptions, empOptions[0] && empOptions[0].value)}
+    <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự</label>
+    ${empOptions.length === 0 ? `<div class="empty">Chưa có nhân sự.</div>` : renderCustomSelect("tnmd_emp", empOptions, empOptions[0] && empOptions[0].value)}
     <label class="sub" style="display:block;margin-bottom:4px;">Công việc</label>
     <input class="input" id="tnmd_cv" placeholder="VD: Trực văn phòng" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="tnmd_cv_field" />
     <div id="tnmd_err" style="color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
@@ -2864,7 +2863,7 @@ function openDutyPatternRuleForm(u, thu) {
     const employeeId = empOptions.length > 0 ? getSelectValue("tnmd_emp") : "";
     const congViec = document.getElementById("tnmd_cv").value.trim();
     const err = document.getElementById("tnmd_err");
-    if (!employeeId) { err.textContent = "Chưa có nhân viên để đặt quy tắc."; return; }
+    if (!employeeId) { err.textContent = "Chưa có nhân sự để đặt quy tắc."; return; }
     if (!congViec) { err.textContent = "Vui lòng nhập công việc."; return; }
     state.dutyPattern.push({ id: genId("TNMD"), thu, employeeId, congViec, updatedAt: nowMs(), deleted: false });
     saveLocal(); renderApp();
@@ -2874,7 +2873,7 @@ function openDutyPatternRuleForm(u, thu) {
 }
 
 // Áp dụng quy tắc mặc định ra thành lịch trực thật cho tháng đang xem.
-// Bỏ qua nếu ngày đó đã có sẵn đúng nhân viên đó (tránh tạo trùng lặp).
+// Bỏ qua nếu ngày đó đã có sẵn đúng nhân sự đó (tránh tạo trùng lặp).
 async function applyDutyPatternToMonth(u) {
   const rules = state.dutyPattern.filter((r) => !r.deleted);
   if (rules.length === 0) { toast("Chưa có quy tắc mặc định nào. Bấm 'Quy tắc mặc định' để thiết lập trước."); return; }
@@ -2959,8 +2958,8 @@ function openDutyAssignForm(u, dayKey, editId) {
     <div class="sheet-title">${editing ? "Sửa phân công trực" : "Phân công trực"}</div>
     <label class="sub" style="display:block;margin-bottom:4px;">Ngày trực</label>
     ${renderCustomDate("dt_ngay", editing ? editing.ngay : dayKey)}
-    <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
-    ${empOptions.length === 0 ? `<div class="empty">Chưa có nhân viên nào.</div>` : renderCustomSelect("dt_emp", empOptions, editing ? editing.employeeId : (empOptions[0] && empOptions[0].value))}
+    <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự</label>
+    ${empOptions.length === 0 ? `<div class="empty">Chưa có nhân sự nào.</div>` : renderCustomSelect("dt_emp", empOptions, editing ? editing.employeeId : (empOptions[0] && empOptions[0].value))}
     <label class="sub" style="display:block;margin-bottom:4px;">Công việc</label>
     <input class="input" id="dt_congviec" placeholder="VD: Trực văn phòng, Trực vệ sinh..." value="${editing ? editing.congViec || "" : ""}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="dt_cv_field" />
     <label class="sub" style="display:block;margin-bottom:4px;">Ghi chú (không bắt buộc)</label>
@@ -2976,7 +2975,7 @@ function openDutyAssignForm(u, dayKey, editId) {
     const employeeId = empOptions.length > 0 ? getSelectValue("dt_emp") : "";
     const congViec = document.getElementById("dt_congviec").value.trim();
     const err = document.getElementById("dt_err");
-    if (!employeeId) { err.textContent = "Chưa có nhân viên để phân công."; return; }
+    if (!employeeId) { err.textContent = "Chưa có nhân sự để phân công."; return; }
     if (!congViec) { err.textContent = "Vui lòng nhập công việc trực."; return; }
 
     if (editing) {
@@ -3000,7 +2999,7 @@ function openDutyAssignForm(u, dayKey, editId) {
 
 function renderSettings(u) {
   const admin = isAdmin(u);
-  const vaiTroLabel = u.vaiTro === "Admin" ? "Admin" : u.vaiTro === "QuanLy" ? "Quản lý" : "Nhân viên";
+  const vaiTroLabel = u.vaiTro === "Admin" ? "Admin" : u.vaiTro === "QuanLy" ? "Quản lý" : "Nhân sự";
 
   const availableTabs = [
     { key: "canhan", label: "Cá nhân" },
@@ -3042,9 +3041,10 @@ function renderSettingsCaNhan(u, vaiTroLabel, admin) {
       <div style="font-weight:700;font-size:16px;">${u.hoTen}</div>
       <div class="sub" style="margin:2px 0 8px;">Mã NV: ${u.id} · ${u.phongBan || ""}</div>
       <span class="pill" style="background:#E9F1FF;color:var(--primary);">${vaiTroLabel}</span>
-      ${!admin ? `<div class="sub" style="margin-top:12px;text-align:left;">
-        <b>Quyền được cấp:</b> ${Object.entries(PERMISSIONS).filter(([k]) => u.quyen && u.quyen[k]).map(([, label]) => label).join(", ") || "Không có quyền đặc biệt nào"}
-      </div>` : ""}
+      ${!admin ? (() => {
+        const permList = Object.entries(PERMISSIONS).filter(([k]) => u.quyen && u.quyen[k]).map(([, label]) => label).join(", ");
+        return permList ? `<div class="sub" style="margin-top:12px;text-align:left;"><b>Quyền được cấp:</b> ${permList}</div>` : "";
+      })() : ""}
     </div>
 
     <div class="settings-section-label">Yêu cầu của tôi</div>
@@ -3127,21 +3127,21 @@ function renderSettingsQuanTri() {
     <div class="settings-section-label">Trừ tiền theo quy chế (chỉ tham khảo, không tự trừ lương thật)</div>
     <div class="card">
       <div style="font-weight:700;margin-bottom:8px;">Miễn trừ đi muộn/về sớm (không tính là vi phạm)</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên - số phút miễn trừ</label>
+      <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự - số phút miễn trừ</label>
       <input class="input" id="cf_mientru_nv" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_nv_field" />
       <label class="sub" style="display:block;margin-bottom:4px;">Quản lý - số phút miễn trừ</label>
       <input class="input" id="cf_mientru_ql" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_ql_field" />
     </div>
     <div class="card">
       <div style="font-weight:700;margin-bottom:8px;">Mức phạt đi muộn/về sớm (đồng/giờ, sau khi trừ miễn trừ)</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
+      <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự</label>
       <input class="input" id="cf_phat_gio_nv" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_nv_field" />
       <label class="sub" style="display:block;margin-bottom:4px;">Quản lý</label>
       <input class="input" id="cf_phat_gio_ql" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_ql_field" />
     </div>
     <div class="card">
       <div style="font-weight:700;margin-bottom:8px;">Mức phạt nghỉ không phép (đồng/lần)</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Nhân viên</label>
+      <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự</label>
       <input class="input" id="cf_phat_nkp_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_nv_field" />
       <label class="sub" style="display:block;margin-bottom:4px;">Quản lý</label>
       <input class="input" id="cf_phat_nkp_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_ql_field" />
@@ -3150,11 +3150,11 @@ function renderSettingsQuanTri() {
       <div style="font-weight:700;margin-bottom:8px;">Nghỉ có phép vượt mức</div>
       <label class="sub" style="display:block;margin-bottom:4px;">Số ngày miễn phí/tháng</label>
       <input class="input" id="cf_ngaynghi_mienphi" type="text" inputmode="numeric" value="${state.config.soNgayNghiPhepMienPhi}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_ngaynghi_mienphi_field" />
-      <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Nhân viên</label>
+      <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Nhân sự</label>
       <input class="input" id="cf_phat_np_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_nv_field" />
       <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Quản lý</label>
       <input class="input" id="cf_phat_np_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_ql_field" />
-      <div class="sub" style="margin-top:-4px;">Mốc phạt bổ sung theo số lần đi muộn/tháng (8 lần: +200.000đ, 10 lần: +500.000đ cho Nhân viên; trên 5 lần: +300.000đ cho Quản lý) đã cố định theo quy chế, không chỉnh được ở đây.</div>
+      <div class="sub" style="margin-top:-4px;">Mốc phạt bổ sung theo số lần đi muộn/tháng (8 lần: +200.000đ, 10 lần: +500.000đ cho Nhân sự; trên 5 lần: +300.000đ cho Quản lý) đã cố định theo quy chế, không chỉnh được ở đây.</div>
     </div>
 
     <div class="settings-section-label">Ngày lễ đặc biệt</div>
@@ -3181,7 +3181,7 @@ function renderSettingsQuanTri() {
       </label>
       <label class="sub" style="display:block;margin-bottom:4px;">Bán kính cho phép (mét)</label>
       <input class="input" id="cf_bk" type="text" inputmode="numeric" value="${state.config.banKinhGPS}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_bk_field" />
-      <div class="sub" style="margin:-4px 0 10px;">GPS điện thoại luôn có sai số tự nhiên (thường 10-50m, có lúc hơn trong nhà/nhiều tầng). Nên đặt tối thiểu 50-100m để tránh chặn nhầm nhân viên đứng đúng vị trí.</div>
+      <div class="sub" style="margin:-4px 0 10px;">GPS điện thoại luôn có sai số tự nhiên (thường 10-50m, có lúc hơn trong nhà/nhiều tầng). Nên đặt tối thiểu 50-100m để tránh chặn nhầm nhân sự đứng đúng vị trí.</div>
       <button class="btn btn-outline" id="cf_setloc" style="margin-bottom:8px;">Lấy vị trí hiện tại làm vị trí Studio</button>
       <div class="sub" id="cf_locinfo" style="margin-bottom:10px;">${state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí Studio"}</div>
       <button class="btn btn-primary" id="btnSaveConfig">Lưu cấu hình</button>
