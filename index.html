@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-60";
+const APP_VERSION = "20260808-61";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -2064,6 +2064,37 @@ function renderReport(u) {
 
 // ---- TAB 1: TỔNG QUAN - số liệu cấp Studio theo tháng ----
 // ---- TAB "HÔM NAY" - trạng thái chấm công của toàn bộ nhân viên trong ngày hôm nay ----
+// Bấm vào 1 ô trong "Tổng quan → Hôm nay" -> hiện danh sách nhân viên tương ứng
+function openTodayStatDetail(kind) {
+  const rows = activeEmployees().map(computeTodayStatus).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
+  const titles = {
+    tongNV: "Tổng nhân viên", daChamCong: "Đã chấm công hôm nay", dangLam: "Đang làm (chưa chấm ra)",
+    diTre: "Đi trễ hôm nay", nghiPhep: "Nghỉ phép hôm nay", chuaChamCong: "Chưa chấm công hôm nay",
+  };
+  let filtered = rows;
+  if (kind === "daChamCong") filtered = rows.filter((r) => r.rec && r.rec.gioVao);
+  else if (kind === "dangLam") filtered = rows.filter((r) => r.status === "dangLam");
+  else if (kind === "diTre") filtered = rows.filter((r) => r.rec && r.rec.gioVao && isLate(r.rec.gioVao, r.emp.vaiTro));
+  else if (kind === "nghiPhep") filtered = rows.filter((r) => r.status === "nghiPhep");
+  else if (kind === "chuaChamCong") filtered = rows.filter((r) => r.status === "nghiKhongPhep" || r.status === "tuongLai");
+
+  openSheet(`
+    <div class="sheet-title">${titles[kind] || "Chi tiết"} (${filtered.length})</div>
+    <div style="max-height:60vh;overflow-y:auto;">
+      ${filtered.length === 0 ? `<div class="empty">Không có ai.</div>` :
+        filtered.map((r) => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:600;font-size:13.5px;">${r.emp.hoTen}</div>
+            <div class="sub">${r.emp.phongBan || ""}${r.leave ? ` · ${r.leave.loaiNghi}` : r.rec && r.rec.gioVao ? ` · ${r.rec.gioVao} → ${r.rec.gioRa || "—"}` : ""}</div>
+          </div>
+          <span class="pill" style="background:${r.bg};color:${r.color};">${r.label}</span>
+        </div>`).join("")}
+    </div>
+    <button class="btn btn-outline" id="td_close" style="margin-top:14px;">Đóng</button>
+  `);
+  document.getElementById("td_close").onclick = closeSheet;
+}
+
 function computeTodayStatus(emp) {
   const dayKey = todayKey();
   const st = computeDayStatus(emp.id, dayKey);
@@ -2103,16 +2134,16 @@ function renderReportHomNayContent() {
     <div class="sub" style="text-align:center;margin-bottom:10px;text-transform:capitalize;">${nowVNWeekdayLong()}</div>
 
     <div class="row" style="margin-bottom:10px;">
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub" style="font-size:11px;">Tổng nhân viên</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--green);">${soDaChamCong}</div><div class="sub" style="font-size:11px;">Đã chấm công</div></div>
+      <div class="card" data-today-stat="tongNV" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${rows.length}</div><div class="sub" style="font-size:11px;">Tổng nhân viên ›</div></div>
+      <div class="card" data-today-stat="daChamCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--green);">${soDaChamCong}</div><div class="sub" style="font-size:11px;">Đã chấm công ›</div></div>
     </div>
     <div class="row" style="margin-bottom:10px;">
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${soDangLam}</div><div class="sub" style="font-size:11px;">Đang làm</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${soDiTre > 0 ? "var(--amber)" : "var(--ink)"};">${soDiTre}</div><div class="sub" style="font-size:11px;">Đi trễ</div></div>
+      <div class="card" data-today-stat="dangLam" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--primary);">${soDangLam}</div><div class="sub" style="font-size:11px;">Đang làm ›</div></div>
+      <div class="card" data-today-stat="diTre" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${soDiTre > 0 ? "var(--amber)" : "var(--ink)"};">${soDiTre}</div><div class="sub" style="font-size:11px;">Đi trễ ›</div></div>
     </div>
     <div class="row" style="margin-bottom:12px;">
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--sub);">${soNghiPhep}</div><div class="sub" style="font-size:11px;">Nghỉ phép</div></div>
-      <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${soChuaChamCong > 0 ? "var(--red)" : "var(--ink)"};">${soChuaChamCong}</div><div class="sub" style="font-size:11px;">Chưa chấm công</div></div>
+      <div class="card" data-today-stat="nghiPhep" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:var(--sub);">${soNghiPhep}</div><div class="sub" style="font-size:11px;">Nghỉ phép ›</div></div>
+      <div class="card" data-today-stat="chuaChamCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${soChuaChamCong > 0 ? "var(--red)" : "var(--ink)"};">${soChuaChamCong}</div><div class="sub" style="font-size:11px;">Chưa chấm công ›</div></div>
     </div>
 
     <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(24 + 182 + 45)};">
@@ -2372,6 +2403,9 @@ function bindReportEvents(u) {
   });
   document.querySelectorAll("[data-company-stat]").forEach((el) => {
     el.onclick = () => openCompanyStatDetail(el.dataset.companyStat, reportMonthState.year, reportMonthState.month);
+  });
+  document.querySelectorAll("[data-today-stat]").forEach((el) => {
+    el.onclick = () => openTodayStatDetail(el.dataset.todayStat);
   });
 
   // Vuốt trái/phải để chuyển tab Báo cáo - công thái học hơn phải với tay bấm nút tab
