@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-58";
+const APP_VERSION = "20260808-59";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -2084,6 +2084,19 @@ function computeTodayStatus(emp) {
 }
 
 // Nội dung "Hôm nay" - được gọi từ bên trong tab Tổng quan qua công tắc, không còn là tab riêng
+// Tính max-height cho vùng cuộn RIÊNG (không cuộn theo toàn trang) - dùng chung
+// cho tab Nhân viên và các danh sách trong Báo cáo. "extraFixedPx" là chiều cao
+// ước lượng của các khối "cố định" phía trên danh sách trong CHÍNH màn hình đó
+// (không tính header/tab-bar/nav vốn đã có sẵn trong công thức gốc).
+// Lưu ý: đây là số ước lượng ban đầu, có thể cần tinh chỉnh sau khi thử máy thật.
+function scrollAreaMaxHeight(extraFixedPx) {
+  return `calc(100vh - ${198 + extraFixedPx}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`;
+}
+// Riêng trong Báo cáo có thêm thanh tab + dòng gợi ý vuốt (~62px) so với màn thường
+function scrollAreaMaxHeightReport(extraFixedPx) {
+  return scrollAreaMaxHeight(62 + extraFixedPx);
+}
+
 function renderReportHomNayContent() {
   const rows = activeEmployees().map(computeTodayStatus).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
   const soDaChamCong = rows.filter((r) => r.rec && r.rec.gioVao).length;
@@ -2108,7 +2121,7 @@ function renderReportHomNayContent() {
       <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${soChuaChamCong > 0 ? "var(--red)" : "var(--ink)"};">${soChuaChamCong}</div><div class="sub" style="font-size:11px;">Chưa chấm công</div></div>
     </div>
 
-    <div class="card" style="padding:0;overflow:hidden;">
+    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(24 + 182 + 45)};">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Danh sách chấm công hôm nay</div>
       ${rows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
         rows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
@@ -2141,7 +2154,7 @@ function renderReportViPhamContent() {
 
     <div class="sub" style="margin-bottom:10px;font-style:italic;">Số tiền chỉ mang tính tham khảo — Admin xác nhận trước khi trừ lương thật.</div>
 
-    <div class="card" style="padding:0;overflow:hidden;">
+    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(58 + 68 + 78 + 30)};">
       ${rows.length === 0 ? `<div class="empty">Không có ai vi phạm quy chế tháng này. 🎉</div>` :
         rows.map((r) => `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -2261,7 +2274,7 @@ function renderReportTheoNhanVien() {
       </div>` : ""}
     </div>
 
-    <div class="card" style="padding:0;overflow:hidden;">
+    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(58 + 90 + 45)};">
       <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Bấm vào 1 người để xem chi tiết + lịch sử đơn/đề nghị</div>
       ${reportEmpViewMode === "thang" ? (
         monthRows.length === 0 ? `<div class="empty">Chưa có nhân viên.</div>` :
@@ -2334,7 +2347,7 @@ function renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeave
     </div>`;
   }
 
-  return html;
+  return `<div style="overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(0)};">${html}</div>`;
 }
 
 function bindReportEvents(u) {
