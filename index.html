@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-56";
+const APP_VERSION = "20260808-57";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -2025,6 +2025,8 @@ function ensureReportMonthState() {
 }
 let reportViewTab = null; // "tongquan" | "theonhanvien" | "canduyet" - tự chọn tab đầu tiên khả dụng
 let reportEmpViewMode = "thang"; // "thang" | "toanthoigian" - áp dụng riêng cho tab Theo nhân viên
+let reportOverviewMode = "homnay"; // "homnay" | "thang" - công tắc bên trong tab Tổng quan
+let reportEmpFilter = "tatca"; // "tatca" | "vipham" - bộ lọc bên trong tab Theo nhân viên
 
 function renderReport(u) {
   ensureReportMonthState();
@@ -2037,7 +2039,7 @@ function renderReport(u) {
   const canViewCanDuyetTab = canViewLeaveSection || canViewCorrectionSection;
 
   const availableTabs = [
-    ...(canViewFullReport ? [{ key: "homnay", label: "Hôm nay" }, { key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }, { key: "vipham", label: "Vi phạm" }] : []),
+    ...(canViewFullReport ? [{ key: "tongquan", label: "Tổng quan" }, { key: "theonhanvien", label: "Theo nhân viên" }] : []),
     ...(canViewCanDuyetTab ? [{ key: "canduyet", label: "Cần duyệt" }] : []),
   ];
   if (!reportViewTab || !availableTabs.find((t) => t.key === reportViewTab)) {
@@ -2049,20 +2051,19 @@ function renderReport(u) {
   const soLuongCanDuyet = (canViewLeaveSection ? pendingLeaves.length : 0) + (canViewCorrectionSection ? pendingCorrections.length : 0);
 
   let bodyHtml = "";
-  if (reportViewTab === "homnay") bodyHtml = renderReportHomNay();
-  else if (reportViewTab === "tongquan") bodyHtml = renderReportTongQuan();
+  if (reportViewTab === "tongquan") bodyHtml = renderReportTongQuan();
   else if (reportViewTab === "theonhanvien") bodyHtml = renderReportTheoNhanVien();
-  else if (reportViewTab === "vipham") bodyHtml = renderReportViPham();
   else if (reportViewTab === "canduyet") bodyHtml = renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeaveSection, canViewCorrectionSection);
   else bodyHtml = `<div class="empty">Bạn chưa được cấp quyền xem báo cáo hoặc duyệt đơn nào. Liên hệ Admin để được cấp quyền.</div>`;
 
   return `
   <div class="header"><div class="title">Báo cáo</div></div>
-  <div class="pad">
+  <div class="pad" id="report_swipe_area">
     ${availableTabs.length > 1 ? `
-    <div class="tabs" style="margin-bottom:12px;">
+    <div class="tabs" style="margin-bottom:2px;">
       ${availableTabs.map((t) => `<button type="button" data-report-tab="${t.key}" class="${reportViewTab === t.key ? "active" : ""}">${t.label}${t.key === "canduyet" && soLuongCanDuyet > 0 ? ` (${soLuongCanDuyet})` : ""}</button>`).join("")}
-    </div>` : ""}
+    </div>
+    <div class="sub" style="text-align:center;font-size:10.5px;margin-bottom:10px;">‹ › vuốt để chuyển tab</div>` : ""}
     ${bodyHtml}
   </div>`;
 }
@@ -2082,7 +2083,8 @@ function computeTodayStatus(emp) {
   return { emp, rec: st.rec, leave: st.leave, status: st.kind, label: shortLabels[st.kind] || st.label, bg: st.bg, color: st.color };
 }
 
-function renderReportHomNay() {
+// Nội dung "Hôm nay" - được gọi từ bên trong tab Tổng quan qua công tắc, không còn là tab riêng
+function renderReportHomNayContent() {
   const rows = activeEmployees().map(computeTodayStatus).sort((a, b) => a.emp.hoTen.localeCompare(b.emp.hoTen, "vi"));
   const soDaChamCong = rows.filter((r) => r.rec && r.rec.gioVao).length;
   const soDangLam = rows.filter((r) => r.status === "dangLam").length;
@@ -2120,8 +2122,8 @@ function renderReportHomNay() {
   `;
 }
 
-// ---- TAB "VI PHẠM" - cảnh báo vi phạm quy chế + ước tính trừ tiền toàn bộ nhân viên ----
-function renderReportViPham() {
+// Nội dung "Vi phạm" - được gọi từ bên trong tab Theo nhân viên qua bộ lọc, không còn là tab riêng
+function renderReportViPhamContent() {
   const rows = activeEmployees().map((emp) => {
     const warnings = computeViolationWarnings(emp.id, reportMonthState.year, reportMonthState.month);
     const ded = computeMonthDeductions(emp.id, reportMonthState.year, reportMonthState.month);
@@ -2132,14 +2134,6 @@ function renderReportViPham() {
   const tongTatCa = rows.reduce((sum, r) => sum + r.ded.tongTienPhat, 0);
 
   return `
-    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
-        <div style="font-weight:700;">Vi phạm — Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
-        <button type="button" class="btn btn-outline" id="rp_next" style="width:auto;padding:8px 14px;">›</button>
-      </div>
-    </div>
-
     <div class="row" style="margin-bottom:12px;">
       <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:${rows.length > 0 ? "var(--amber)" : "var(--ink)"};">${rows.length}</div><div class="sub" style="font-size:11px;">Người đang vi phạm</div></div>
       <div class="card" style="flex:1;margin-bottom:0;padding:12px;"><div style="font-size:20px;font-weight:800;color:var(--red);">${fmtVND(tongTatCa)}</div><div class="sub" style="font-size:11px;">Tổng ước tính trừ</div></div>
@@ -2161,6 +2155,21 @@ function renderReportViPham() {
 }
 
 function renderReportTongQuan() {
+  const pendingCount = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet").length +
+    state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet").length;
+
+  const switcherHtml = `
+    <div class="card" style="padding:6px;margin-bottom:12px;">
+      <div style="background:#F3F5F9;border-radius:20px;padding:3px;display:flex;">
+        <button type="button" data-overview-mode="homnay" style="flex:1;text-align:center;border:none;border-radius:16px;padding:8px 0;font-size:12px;font-weight:600;cursor:pointer;${reportOverviewMode === "homnay" ? "background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,0.08);" : "background:transparent;color:var(--sub);"}">Hôm nay</button>
+        <button type="button" data-overview-mode="thang" style="flex:1;text-align:center;border:none;border-radius:16px;padding:8px 0;font-size:12px;font-weight:600;cursor:pointer;${reportOverviewMode === "thang" ? "background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,0.08);" : "background:transparent;color:var(--sub);"}">Tháng này</button>
+      </div>
+    </div>`;
+
+  if (reportOverviewMode === "homnay") {
+    return switcherHtml + renderReportHomNayContent();
+  }
+
   const monthRows = activeEmployees().map((emp) => {
     const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
     return { emp, ...stats };
@@ -2173,10 +2182,8 @@ function renderReportTongQuan() {
     if (r.tongCong > 0) acc.tongNhanVienCoCong += 1;
     return acc;
   }, { tongCong: 0, tongGioLamThem: 0, tongTreSom: 0, tongNgayNghi: 0, tongNhanVienCoCong: 0 });
-  const pendingCount = state.leaveRequests.filter((l) => !l.deleted && l.trangThai === "ChoDuyet").length +
-    state.correctionRequests.filter((c) => !c.deleted && c.trangThai === "ChoDuyet").length;
 
-  return `
+  return switcherHtml + `
     <div class="card" style="padding:12px 14px;margin-bottom:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
@@ -2200,8 +2207,27 @@ function renderReportTongQuan() {
   `;
 }
 
-// ---- TAB 2: THEO NHÂN VIÊN - danh sách chi tiết, chọn xem theo tháng hoặc toàn thời gian ----
+// ---- TAB 2: THEO NHÂN VIÊN - danh sách chi tiết, chọn xem theo tháng/toàn thời gian/chỉ vi phạm ----
 function renderReportTheoNhanVien() {
+  const filterSwitcherHtml = `
+    <div class="card" style="padding:6px;margin-bottom:12px;">
+      <div style="background:#F3F5F9;border-radius:20px;padding:3px;display:flex;">
+        <button type="button" data-emp-filter="tatca" style="flex:1;text-align:center;border:none;border-radius:16px;padding:8px 0;font-size:12px;font-weight:600;cursor:pointer;${reportEmpFilter === "tatca" ? "background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,0.08);" : "background:transparent;color:var(--sub);"}">Tất cả</button>
+        <button type="button" data-emp-filter="vipham" style="flex:1;text-align:center;border:none;border-radius:16px;padding:8px 0;font-size:12px;font-weight:600;cursor:pointer;${reportEmpFilter === "vipham" ? "background:#fff;color:var(--red);box-shadow:0 1px 2px rgba(0,0,0,0.08);" : "background:transparent;color:var(--sub);"}">⚠ Chỉ vi phạm</button>
+      </div>
+    </div>`;
+
+  if (reportEmpFilter === "vipham") {
+    return filterSwitcherHtml + `
+    <div class="card" style="padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <button type="button" class="btn btn-outline" id="rp_prev" style="width:auto;padding:8px 14px;">‹</button>
+        <div style="font-weight:700;">Tháng ${reportMonthState.month}/${reportMonthState.year}</div>
+        <button type="button" class="btn btn-outline" id="rp_next" style="width:auto;padding:8px 14px;">›</button>
+      </div>
+    </div>` + renderReportViPhamContent();
+  }
+
   const monthRows = activeEmployees().map((emp) => {
     const stats = computeMonthStats(emp.id, reportMonthState.year, reportMonthState.month);
     return { emp, ...stats };
@@ -2221,7 +2247,7 @@ function renderReportTheoNhanVien() {
     return { id, hoTen: emp ? emp.hoTen : id, phongBan: emp ? emp.phongBan : "", ...v };
   }).sort((a, b) => b.tongGio - a.tongGio);
 
-  return `
+  return filterSwitcherHtml + `
     <div class="card" style="padding:12px 14px;margin-bottom:12px;">
       <div class="tabs" style="padding-bottom:0;margin-bottom:${reportEmpViewMode === "thang" ? "10px" : "0"};">
         <button type="button" data-emp-view-mode="thang" class="${reportEmpViewMode === "thang" ? "active" : ""}">Theo tháng</button>
@@ -2314,6 +2340,8 @@ function renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeave
 function bindReportEvents(u) {
   document.querySelectorAll("[data-report-tab]").forEach((b) => b.onclick = () => { reportViewTab = b.dataset.reportTab; renderApp(); });
   document.querySelectorAll("[data-emp-view-mode]").forEach((b) => b.onclick = () => { reportEmpViewMode = b.dataset.empViewMode; renderApp(); });
+  document.querySelectorAll("[data-overview-mode]").forEach((b) => b.onclick = () => { reportOverviewMode = b.dataset.overviewMode; renderApp(); });
+  document.querySelectorAll("[data-emp-filter]").forEach((b) => b.onclick = () => { reportEmpFilter = b.dataset.empFilter; renderApp(); });
 
   document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = async () => await decideLeave(b.dataset.approve, "DaDuyet", u));
   document.querySelectorAll("[data-reject]").forEach((b) => b.onclick = async () => await decideLeave(b.dataset.reject, "TuChoi", u));
@@ -2338,6 +2366,33 @@ function bindReportEvents(u) {
   document.querySelectorAll("[data-company-stat]").forEach((el) => {
     el.onclick = () => openCompanyStatDetail(el.dataset.companyStat, reportMonthState.year, reportMonthState.month);
   });
+
+  // Vuốt trái/phải để chuyển tab Báo cáo - công thái học hơn phải với tay bấm nút tab
+  const isAdmin_ = isAdmin(u);
+  const canViewFullReport_ = isAdmin_ || hasPerm(u, "xemBaoCao");
+  const canViewCanDuyet_ = isAdmin_ || hasPerm(u, "duyetNghiPhep") || hasPerm(u, "duyetDeNghiCong");
+  const swipeTabs = [
+    ...(canViewFullReport_ ? [{ key: "tongquan" }, { key: "theonhanvien" }] : []),
+    ...(canViewCanDuyet_ ? [{ key: "canduyet" }] : []),
+  ];
+  const swipeArea = document.getElementById("report_swipe_area");
+  if (swipeArea && swipeTabs.length > 1) {
+    let touchStartX = null, touchStartY = null;
+    swipeArea.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    swipeArea.addEventListener("touchend", (e) => {
+      if (touchStartX == null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      touchStartX = null; touchStartY = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // chỉ tính vuốt ngang rõ ràng
+      const idx = swipeTabs.findIndex((t) => t.key === reportViewTab);
+      if (idx === -1) return;
+      if (dx < 0 && idx < swipeTabs.length - 1) { reportViewTab = swipeTabs[idx + 1].key; renderApp(); }
+      else if (dx > 0 && idx > 0) { reportViewTab = swipeTabs[idx - 1].key; renderApp(); }
+    }, { passive: true });
+  }
 }
 // Bấm vào 1 ô trong "Tổng quan" -> hiện chi tiết TỪNG NHÂN VIÊN liên quan tới chỉ số đó
 function openCompanyStatDetail(kind, year, month) {
