@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-63";
+const APP_VERSION = "20260808-64";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -2145,8 +2145,7 @@ function renderReportHomNayContent() {
       <div class="card" data-today-stat="chuaChamCong" style="flex:1;margin-bottom:0;padding:12px;cursor:pointer;"><div style="font-size:20px;font-weight:800;color:${soChuaChamCong > 0 ? "var(--red)" : "var(--ink)"};">${soChuaChamCong}</div><div class="sub" style="font-size:11px;">Chưa chấm công ›</div></div>
     </div>
 
-    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(24 + 182 + 45)};">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Danh sách chấm công hôm nay</div>
+    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(24 + 182)};">
       ${rows.length === 0 ? `<div class="empty">Chưa có nhân sự.</div>` :
         rows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
           <div style="flex:1;min-width:0;">
@@ -2154,6 +2153,7 @@ function renderReportHomNayContent() {
             <div class="sub">${r.emp.phongBan || ""} · ${r.rec ? `${r.rec.gioVao || "—"} → ${r.rec.gioRa || "—"}` : "—"}</div>
           </div>
           <span class="pill" style="background:${r.bg};color:${r.color};">${r.label}</span>
+          <span class="sub" style="margin-left:6px;">›</span>
         </div>`).join("")}
     </div>
   `;
@@ -2298,8 +2298,7 @@ function renderReportTheoNhanVien() {
       </div>` : ""}
     </div>
 
-    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(58 + 90 + 45)};">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;">Bấm vào 1 người để xem chi tiết + lịch sử đơn/đề nghị</div>
+    <div class="card" style="padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;max-height:${scrollAreaMaxHeightReport(58 + 90)};">
       ${reportEmpViewMode === "thang" ? (
         monthRows.length === 0 ? `<div class="empty">Chưa có nhân sự.</div>` :
         monthRows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.emp.id}">
@@ -2317,6 +2316,7 @@ function renderReportTheoNhanVien() {
         allTimeRows.map((r) => `<div class="list-item" style="padding:12px 16px;cursor:pointer;" data-emp-detail="${r.id}">
           <div style="flex:1;"><div style="font-weight:600;">${r.hoTen}</div><div class="sub">${r.phongBan} · ${r.soNgay} ngày công${r.soNgayTre > 0 ? ` · <span style="color:var(--amber);">${r.soNgayTre} lần trễ</span>` : ""}</div></div>
           <div style="font-weight:700;color:var(--primary);">${r.tongGio.toFixed(1)}h</div>
+          <span class="sub" style="margin-left:6px;">›</span>
         </div>`).join("")
       )}
     </div>
