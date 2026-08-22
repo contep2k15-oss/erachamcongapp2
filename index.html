@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-64";
+const APP_VERSION = "20260808-65";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -3109,59 +3109,74 @@ function openHolidayForm(existing) {
   };
 }
 
+// Nút "(i)" dùng chung - mở giải thích chi tiết khi cần, thay vì luôn hiện chú thích dài
+function openInfoSheet(title, bodyHtml) {
+  openSheet(`
+    <div class="sheet-title">${title}</div>
+    <div class="sub" style="line-height:1.6;">${bodyHtml}</div>
+    <button class="btn btn-outline" id="info_close" style="margin-top:14px;">Đóng</button>
+  `);
+  document.getElementById("info_close").onclick = closeSheet;
+}
+const infoBtnStyle = "width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);background:none;color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;";
+
 function renderSettingsQuanTri() {
   return `
+    <div class="settings-section-label">Dữ liệu & Giờ làm</div>
     <div class="card">
-      <div style="font-weight:700;margin-bottom:10px;">Sửa dữ liệu trực tiếp trên hệ thống</div>
-      <div class="sub">Bạn có thể sửa tay trong các bảng dữ liệu <b>CC_NHANVIEN</b>, <b>CC_CHAMCONG</b>, <b>CC_NGHIPHEP</b>, <b>CC_CAUHINH</b> trên hệ thống dữ liệu trung tâm — thay đổi sẽ tự động có hiệu lực trong app (trong vòng 20-30 giây, hoặc bấm "Đồng bộ ngay" ở tab Ứng dụng để thấy ngay lập tức). Không cần thao tác gì thêm.</div>
-    </div>
-
-    <div class="settings-section-label">Giờ làm chuẩn</div>
-    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <span style="font-size:13px;color:var(--sub);">Sửa dữ liệu trực tiếp trên hệ thống</span>
+        <button type="button" id="info_data" style="${infoBtnStyle}">i</button>
+      </div>
       <label class="sub" style="display:block;margin-bottom:4px;">Giờ vào chuẩn</label>
       ${renderCustomTime("cf_gv", state.config.gioChuan)}
       <label class="sub" style="display:block;margin-bottom:4px;">Giờ ra chuẩn</label>
       ${renderCustomTime("cf_gr", state.config.gioRaChuan)}
     </div>
 
-    <div class="settings-section-label">Trừ tiền theo quy chế (chỉ tham khảo, không tự trừ lương thật)</div>
+    <div class="settings-section-label">Bảng cấu hình thưởng/phạt</div>
     <div class="card">
-      <div style="font-weight:700;margin-bottom:8px;">Miễn trừ đi muộn/về sớm (không tính là vi phạm)</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự - số phút miễn trừ</label>
-      <input class="input" id="cf_mientru_nv" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_nv_field" />
-      <label class="sub" style="display:block;margin-bottom:4px;">Quản lý - số phút miễn trừ</label>
-      <input class="input" id="cf_mientru_ql" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_ql_field" />
-    </div>
-    <div class="card">
-      <div style="font-weight:700;margin-bottom:8px;">Mức phạt đi muộn/về sớm (đồng/giờ, sau khi trừ miễn trừ)</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự</label>
-      <input class="input" id="cf_phat_gio_nv" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_nv_field" />
-      <label class="sub" style="display:block;margin-bottom:4px;">Quản lý</label>
-      <input class="input" id="cf_phat_gio_ql" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_ql_field" />
-    </div>
-    <div class="card">
-      <div style="font-weight:700;margin-bottom:8px;">Mức phạt nghỉ không phép (đồng/lần)</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Nhân sự</label>
-      <input class="input" id="cf_phat_nkp_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_nv_field" />
-      <label class="sub" style="display:block;margin-bottom:4px;">Quản lý</label>
-      <input class="input" id="cf_phat_nkp_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_ql_field" />
-    </div>
-    <div class="card">
-      <div style="font-weight:700;margin-bottom:8px;">Nghỉ có phép vượt mức</div>
-      <label class="sub" style="display:block;margin-bottom:4px;">Số ngày miễn phí/tháng</label>
-      <input class="input" id="cf_ngaynghi_mienphi" type="text" inputmode="numeric" value="${state.config.soNgayNghiPhepMienPhi}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_ngaynghi_mienphi_field" />
-      <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Nhân sự</label>
-      <input class="input" id="cf_phat_np_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_nv_field" />
-      <label class="sub" style="display:block;margin-bottom:4px;">Mức phạt/ngày vượt - Quản lý</label>
-      <input class="input" id="cf_phat_np_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_ql_field" />
-      <div class="sub" style="margin-top:-4px;">Mốc phạt bổ sung theo số lần đi muộn/tháng (8 lần: +200.000đ, 10 lần: +500.000đ cho Nhân sự; trên 5 lần: +300.000đ cho Quản lý) đã cố định theo quy chế, không chỉnh được ở đây.</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:4px;">
+        <thead>
+          <tr style="border-bottom:1.5px solid var(--line);">
+            <th style="text-align:left;padding:0 4px 8px;font-weight:600;color:var(--sub);"></th>
+            <th style="text-align:center;padding:0 4px 8px;font-weight:600;color:var(--sub);">Nhân sự</th>
+            <th style="text-align:center;padding:0 4px 8px;font-weight:600;color:var(--sub);">Quản lý</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:8px 4px;">Miễn trừ trễ (phút)</td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_mientru_nv" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_nv_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_mientru_ql" type="text" inputmode="numeric" value="${state.config.soPhutMienTruTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_mientru_ql_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:8px 4px;">Phạt/giờ trễ (đ)</td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_phat_gio_nv" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_nv_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_phat_gio_ql" type="text" inputmode="numeric" value="${state.config.mucPhatGioTreQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_gio_ql_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:8px 4px;">Nghỉ KP (đ/lần)</td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_phat_nkp_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_nv_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_phat_nkp_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiKhongPhepQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_nkp_ql_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+          </tr>
+          <tr>
+            <td style="padding:8px 4px;">Nghỉ phép/ngày vượt (đ)</td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_phat_np_nv" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotNV}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_nv_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+            <td style="padding:6px 3px;"><input class="input" id="cf_phat_np_ql" type="text" inputmode="numeric" value="${state.config.mucPhatNghiPhepVuotQL}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_phat_np_ql_field" style="margin-bottom:0;padding:7px;text-align:center;font-size:13px;" /></td>
+          </tr>
+        </tbody>
+      </table>
+      <label class="sub" style="display:block;margin:10px 0 4px;">Số ngày nghỉ phép miễn phí/tháng</label>
+      <input class="input" id="cf_ngaynghi_mienphi" type="text" inputmode="numeric" value="${state.config.soNgayNghiPhepMienPhi}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_ngaynghi_mienphi_field" style="margin-bottom:0;" />
+      <div style="display:flex;align-items:center;gap:6px;margin-top:10px;">
+        <button type="button" id="info_mocphat" style="${infoBtnStyle}">i</button>
+        <span class="sub">Mốc phạt bổ sung theo quy chế</span>
+      </div>
     </div>
 
     <div class="settings-section-label">Ngày lễ đặc biệt</div>
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--line);">
-        <div class="sub">Những ngày này sẽ tô màu riêng trên Bảng công và KHÔNG bị tính "nghỉ không phép" dù không ai chấm công (VD: Tết, 30/4-1/5, Quốc khánh...).</div>
-      </div>
       ${state.holidays.filter((h) => !h.deleted).length === 0 ? `<div class="empty">Chưa khai báo ngày lễ nào.</div>` :
         [...state.holidays].filter((h) => !h.deleted).sort((a, b) => a.tuNgay.localeCompare(b.tuNgay)).map((h) => `
         <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
@@ -3174,14 +3189,16 @@ function renderSettingsQuanTri() {
     </div>
     <button class="btn btn-outline" id="btnAddHoliday" style="margin-bottom:12px;">+ Thêm ngày lễ</button>
 
-    <div class="settings-section-label">Định vị GPS khi chấm công</div>
+    <div class="settings-section-label">Định vị GPS</div>
     <div class="card">
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <input type="checkbox" id="cf_gps" ${state.config.batBuocGPS ? "checked" : ""} /> Bắt buộc chấm công trong bán kính Studio
       </label>
-      <label class="sub" style="display:block;margin-bottom:4px;">Bán kính cho phép (mét)</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <label class="sub" style="flex:1;">Bán kính cho phép (mét)</label>
+        <button type="button" id="info_gps" style="${infoBtnStyle}">i</button>
+      </div>
       <input class="input" id="cf_bk" type="text" inputmode="numeric" value="${state.config.banKinhGPS}" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" name="cf_bk_field" />
-      <div class="sub" style="margin:-4px 0 10px;">GPS điện thoại luôn có sai số tự nhiên (thường 10-50m, có lúc hơn trong nhà/nhiều tầng). Nên đặt tối thiểu 50-100m để tránh chặn nhầm nhân sự đứng đúng vị trí.</div>
       <button class="btn btn-outline" id="cf_setloc" style="margin-bottom:8px;">Lấy vị trí hiện tại làm vị trí Studio</button>
       <div class="sub" id="cf_locinfo" style="margin-bottom:10px;">${state.config.viTriCongTy.lat ? `Đã đặt: ${state.config.viTriCongTy.lat.toFixed(6)}, ${state.config.viTriCongTy.lng.toFixed(6)}` : "Chưa đặt vị trí Studio"}</div>
       <button class="btn btn-primary" id="btnSaveConfig">Lưu cấu hình</button>
@@ -3194,17 +3211,17 @@ function renderSettingsUngDung(admin) {
   return `
     ${admin ? `
     <div class="card">
-      <div style="font-weight:700;margin-bottom:10px;">Đồng bộ dữ liệu</div>
-      <div class="sub" style="margin-bottom:10px;">Dữ liệu tự động đồng bộ sau mỗi thay đổi. Bấm nút bên dưới để đồng bộ ngay.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-weight:700;">Đồng bộ dữ liệu</span>
+        <button type="button" id="info_dongbo" style="${infoBtnStyle}">i</button>
+      </div>
       <button class="btn btn-outline" id="btnSyncNow">Đồng bộ ngay</button>
     </div>
 
     <div class="card">
-      <div style="font-weight:700;margin-bottom:10px;">Làm mới bộ nhớ trên máy</div>
-      <div class="sub" style="margin-bottom:10px;">
-        Dùng khi dữ liệu trên máy này có vẻ SAI LỆCH so với hệ thống dữ liệu trung tâm (VD: vừa xoá thẳng dòng trên hệ thống mà app vẫn hiện lại).
-        Thao tác này xoá dữ liệu tạm trên máy và tải lại đúng y hệt từ hệ thống.
-        <span style="color:var(--red);">Lưu ý: nếu bạn vừa thao tác gì đó (chấm công...) mà CHƯA kịp đồng bộ (đang offline), thay đổi đó sẽ mất.</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-weight:700;">Làm mới bộ nhớ trên máy</span>
+        <button type="button" id="info_lammoi" style="${infoBtnStyle}">i</button>
       </div>
       <button class="btn btn-outline" id="btnResetCache">Xoá bộ nhớ đệm & tải lại từ hệ thống</button>
     </div>` : ""}
@@ -3256,6 +3273,23 @@ function bindSettingsEvents(u) {
     const has = await checkForUpdate(false);
     if (has) applyUpdate();
   };
+
+  // Các nút "ⓘ" - mở giải thích chi tiết trong sheet riêng, không chiếm chỗ mặc định
+  const infoData = document.getElementById("info_data");
+  if (infoData) infoData.onclick = () => openInfoSheet("Sửa dữ liệu trực tiếp",
+    `Bạn có thể sửa tay trong các bảng dữ liệu <b>CC_NHANVIEN</b>, <b>CC_CHAMCONG</b>, <b>CC_NGHIPHEP</b>, <b>CC_CAUHINH</b> trên hệ thống dữ liệu trung tâm — thay đổi sẽ tự động có hiệu lực trong app (trong vòng 20-30 giây, hoặc bấm "Đồng bộ ngay" ở tab Ứng dụng để thấy ngay lập tức).`);
+  const infoMocPhat = document.getElementById("info_mocphat");
+  if (infoMocPhat) infoMocPhat.onclick = () => openInfoSheet("Mốc phạt bổ sung theo quy chế",
+    `Mốc phạt bổ sung theo số lần đi muộn/tháng: <b>8 lần +200.000đ</b>, <b>10 lần +500.000đ</b> (Nhân sự); <b>trên 5 lần +300.000đ</b> (Quản lý). Đã cố định theo quy chế, không chỉnh được ở đây.`);
+  const infoGps = document.getElementById("info_gps");
+  if (infoGps) infoGps.onclick = () => openInfoSheet("Bán kính GPS",
+    `GPS điện thoại luôn có sai số tự nhiên (thường 10-50m, có lúc hơn trong nhà/nhiều tầng). Nên đặt tối thiểu 50-100m để tránh chặn nhầm nhân sự đứng đúng vị trí.`);
+  const infoDongBo = document.getElementById("info_dongbo");
+  if (infoDongBo) infoDongBo.onclick = () => openInfoSheet("Đồng bộ dữ liệu",
+    `Dữ liệu tự động đồng bộ sau mỗi thay đổi. Bấm nút "Đồng bộ ngay" để đồng bộ ngay lập tức thay vì chờ tự động.`);
+  const infoLamMoi = document.getElementById("info_lammoi");
+  if (infoLamMoi) infoLamMoi.onclick = () => openInfoSheet("Làm mới bộ nhớ trên máy",
+    `Dùng khi dữ liệu trên máy có vẻ sai lệch so với hệ thống trung tâm (VD: vừa xoá thẳng dòng trên hệ thống mà app vẫn hiện lại). Thao tác này xoá dữ liệu tạm trên máy và tải lại từ hệ thống. <b style="color:var(--red);">Lưu ý: thao tác chưa kịp đồng bộ (đang offline) sẽ bị mất.</b>`);
 
   if (document.getElementById("cf_gv_h_btn")) {
     bindCustomTime("cf_gv");
