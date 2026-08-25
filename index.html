@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-65";
+const APP_VERSION = "20260808-66";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -404,6 +404,11 @@ function nowVNParts() {
 function nowVNTimeStr() { const p = nowVNParts(); return `${p.hour}:${p.minute}:${p.second}`; }
 function nowVNDateStr() { const p = nowVNParts(); return `${p.day}/${p.month}/${p.year}`; }
 function nowVNDayKey() { const p = nowVNParts(); return `${p.year}-${p.month}-${p.day}`; }
+// Định dạng ngày giờ tạo đơn (VD: "22/08 14:35") từ epoch ms - dùng chung cho đơn nghỉ phép/đề nghị sửa công
+function fmtCreatedAt(epochMs) {
+  if (!epochMs) return "Không rõ";
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: VN_TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(epochMs));
+}
 function nowVNWeekdayLong() {
   return new Intl.DateTimeFormat("vi-VN", { timeZone: VN_TZ, weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
 }
@@ -1826,7 +1831,7 @@ function openDayDetail(dayKey, employeeId, currentUser, canEdit) {
     ` : `<div class="empty">${leave || dayStatus.kind !== "nghiKhongPhep" ? "" : "Chưa có dữ liệu chấm công ngày này."}</div>`}
     ${blockedByHierarchy ? `<div class="sub" style="margin-top:8px;font-style:italic;color:var(--amber);">Bạn là Quản lý — không thể tự sửa công của chính mình hoặc Quản lý khác. Vui lòng dùng "Đề nghị cập nhật công" để Admin duyệt.</div>` : ""}
     ${existingRequest ? `<div style="margin-top:10px;padding:10px;background:#F3F5F9;border-radius:10px;">
-      <div class="sub" style="margin-bottom:4px;">Đề nghị gần nhất cho ngày này:</div>
+      <div class="sub" style="margin-bottom:4px;">Đề nghị gần nhất cho ngày này (tạo lúc ${fmtCreatedAt(existingRequest.ngayTao)}):</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:13px;">${existingRequest.gioVaoDeXuat || "—"} → ${existingRequest.gioRaDeXuat || "—"}</span>
         <span class="pill" style="background:${existingRequest.trangThai === "DaDuyet" ? "#E7F8F0" : existingRequest.trangThai === "TuChoi" ? "#FBEAEA" : "#FDF3E4"};color:${existingRequest.trangThai === "DaDuyet" ? "var(--green)" : existingRequest.trangThai === "TuChoi" ? "var(--red)" : "var(--amber)"};">
@@ -1955,7 +1960,7 @@ function openCorrectionRequestForm(u, dayKey, existingRecord) {
       id: genId("DNSC"), employeeId: u.id, ngayCanSua: ngay,
       gioVaoDeXuat: getCustomTimeValue("dnsc_gv"), gioRaDeXuat: getCustomTimeValue("dnsc_gr"),
       lyDo, anhMinhChung: pendingCorrectionImage || "",
-      trangThai: "ChoDuyet", nguoiDuyet: "", updatedAt: nowMs(), deleted: false,
+      trangThai: "ChoDuyet", nguoiDuyet: "", ngayTao: nowMs(), updatedAt: nowMs(), deleted: false,
     });
     saveLocal(); closeSheet(); renderApp();
     await syncNowWithFeedback("Đã gửi đề nghị cập nhật công và đồng bộ thành công, chờ duyệt.");
@@ -2339,6 +2344,7 @@ function renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeave
           return `<div style="padding:12px 16px;border-bottom:1px solid var(--line);">
             <div style="font-weight:600;">${emp ? emp.hoTen : l.employeeId} ${isHigherLevel ? `<span class="pill" style="background:#E9F1FF;color:var(--primary);margin-left:4px;">${emp.vaiTro === "Admin" ? "Admin" : "Quản lý"}</span>` : ""} — ${l.loaiNghi}</div>
             <div class="sub" style="margin:4px 0;">${l.tuNgay} → ${l.denNgay} · ${l.lyDo || ""}</div>
+            <div class="sub" style="margin-bottom:6px;">Tạo lúc: ${fmtCreatedAt(l.ngayTao)}</div>
             ${canApprove ? `<div class="row">
               <button class="btn btn-green" data-approve="${l.id}" style="padding:8px 0;font-size:12.5px;">Duyệt</button>
               <button class="btn btn-red" data-reject="${l.id}" style="padding:8px 0;font-size:12.5px;">Từ chối</button>
@@ -2361,6 +2367,7 @@ function renderReportCanDuyet(u, pendingLeaves, pendingCorrections, canViewLeave
             <div style="font-weight:600;">${emp ? emp.hoTen : c.employeeId} ${isHigherLevel ? `<span class="pill" style="background:#E9F1FF;color:var(--primary);margin-left:4px;">${emp.vaiTro === "Admin" ? "Admin" : "Quản lý"}</span>` : ""} — ngày ${c.ngayCanSua}</div>
             <div class="sub" style="margin:4px 0;">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"}</div>
             <div class="sub" style="margin-bottom:6px;">Lý do: ${c.lyDo || ""}</div>
+            <div class="sub" style="margin-bottom:6px;">Tạo lúc: ${fmtCreatedAt(c.ngayTao)}</div>
             ${c.anhMinhChung ? `<img src="${c.anhMinhChung}" style="max-width:140px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px;display:block;" />` : ""}
             ${canApprove ? `<div class="row">
               <button class="btn btn-green" data-approve-cor="${c.id}" style="padding:8px 0;font-size:12.5px;">Duyệt</button>
@@ -2676,7 +2683,7 @@ function openLeaveForm(u) {
     state.leaveRequests.push({
       id: genId("DN"), employeeId: u.id, loaiNghi: getSelectValue("lv_loai"),
       tuNgay: tu, denNgay: den, lyDo: document.getElementById("lv_lydo").value.trim(),
-      trangThai: "ChoDuyet", nguoiDuyet: "", updatedAt: nowMs(), deleted: false,
+      trangThai: "ChoDuyet", nguoiDuyet: "", ngayTao: nowMs(), updatedAt: nowMs(), deleted: false,
     });
     saveLocal(); closeSheet(); renderApp();
     await syncNowWithFeedback("Đã gửi đơn nghỉ phép.");
@@ -3055,7 +3062,7 @@ function renderSettingsCaNhan(u, vaiTroLabel, admin) {
           <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;font-size:13px;">${l.loaiNghi}</div>
           <span class="pill" style="background:${l.trangThai === "DaDuyet" ? "#E7F8F0" : l.trangThai === "TuChoi" ? "#FBEAEA" : "#FDF3E4"};color:${l.trangThai === "DaDuyet" ? "var(--green)" : l.trangThai === "TuChoi" ? "var(--red)" : "var(--amber)"};">
             ${l.trangThai === "DaDuyet" ? "Đã duyệt" : l.trangThai === "TuChoi" ? "Từ chối" : "Chờ duyệt"}</span></div>
-          <div class="sub">${l.tuNgay} → ${l.denNgay}</div>
+          <div class="sub">${l.tuNgay} → ${l.denNgay} · Tạo lúc: ${fmtCreatedAt(l.ngayTao)}</div>
         </div>`).join("")}
     </div>
 
@@ -3066,7 +3073,7 @@ function renderSettingsCaNhan(u, vaiTroLabel, admin) {
           <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;font-size:13px;">Ngày ${c.ngayCanSua}</div>
           <span class="pill" style="background:${c.trangThai === "DaDuyet" ? "#E7F8F0" : c.trangThai === "TuChoi" ? "#FBEAEA" : "#FDF3E4"};color:${c.trangThai === "DaDuyet" ? "var(--green)" : c.trangThai === "TuChoi" ? "var(--red)" : "var(--amber)"};">
             ${c.trangThai === "DaDuyet" ? "Đã duyệt" : c.trangThai === "TuChoi" ? "Từ chối" : "Chờ duyệt"}</span></div>
-          <div class="sub">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"}</div>
+          <div class="sub">Đề xuất: ${c.gioVaoDeXuat || "—"} → ${c.gioRaDeXuat || "—"} · Tạo lúc: ${fmtCreatedAt(c.ngayTao)}</div>
         </div>`).join("")}
     </div>
   `;
