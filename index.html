@@ -186,7 +186,7 @@ document.addEventListener("keydown", (e) => {
 // =====================================================================
 const API_URL   = "https://script.google.com/macros/s/AKfycbzkx15FDlrxOcqRj7RCm0sLdMAKBDjyiYWkK4kA5zXj2iTtzSiHMMgACaHEp5E9QDYv4w/exec";
 const APP_TOKEN = "CONTEP2K20";
-const APP_VERSION = "20260808-66";
+const APP_VERSION = "20260808-67";
 
 const STORAGE_KEY = "cc_state_v1";
 const SESSION_KEY = "cc_session_v1";
@@ -963,8 +963,23 @@ function renderApp() {
   const content = document.getElementById("content");
   const renderers = { checkin: renderCheckin, employees: renderEmployees, history: renderHistory, report: renderReport, settings: renderSettings, duty: renderDutyRoster };
   const fn = renderers[currentTab] || renderCheckin;
-  content.innerHTML = fn(u);
-  bindScreenEvents(currentTab, u);
+  try {
+    content.innerHTML = fn(u);
+    bindScreenEvents(currentTab, u);
+  } catch (err) {
+    // QUAN TRỌNG: lỗi khi vẽ giao diện KHÔNG được phép làm hỏng luôn các bước xử lý
+    // phía sau lệnh gọi renderApp() (VD: gửi dữ liệu chấm công lên server) - nếu không
+    // bọc try/catch ở đây, 1 lỗi nhỏ khi vẽ màn hình có thể âm thầm chặn đứng việc
+    // đồng bộ, khiến dữ liệu chỉ nằm trên máy mà không lên được hệ thống.
+    console.error("Lỗi khi vẽ giao diện tab " + currentTab + ":", err);
+    content.innerHTML = `<div class="pad"><div class="card" style="text-align:center;padding:28px 20px;">
+      <div style="font-size:15px;font-weight:700;color:var(--red);margin-bottom:8px;">Có lỗi khi hiển thị màn hình này</div>
+      <div class="sub" style="margin-bottom:16px;">Dữ liệu của bạn vẫn an toàn và đã được xử lý. Vui lòng thử lại.</div>
+      <button class="btn btn-primary" id="err_retry_tab">Thử lại</button>
+    </div></div>`;
+    const retryBtn = document.getElementById("err_retry_tab");
+    if (retryBtn) retryBtn.onclick = () => { currentTab = "checkin"; renderApp(); };
+  }
 }
 
 function renderOverlayShell() {
@@ -3442,6 +3457,15 @@ async function bootstrap() {
     }
   });
 }
+// Giám sát lỗi JS chưa được bắt (uncaught) trên toàn app - chỉ để ghi log rõ ràng
+// vào console giúp tra cứu khi có sự cố, KHÔNG làm gián đoạn trải nghiệm người dùng.
+window.addEventListener("error", (e) => {
+  console.error("[Era Media] Lỗi JS chưa được xử lý:", e.error || e.message);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("[Era Media] Promise bị từ chối chưa được xử lý:", e.reason);
+});
+
 bootstrap();
 
 // =====================================================================
